@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6">
+  <div class="flex justify-between mb-4">
+    <h1 class="text-2xl font-bold">Scripts</h1>
+    <a href="{% url 'scripts:create' %}" class="bg-blue-600 text-white px-4 py-2 rounded">Nuevo script</a>
+  </div>
+  <table class="w-full bg-white shadow rounded">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="text-left p-3">Nombre</th>
+        <th class="text-left p-3">Inputs &#123;&#123;&#125;&#125;</th>
+        <th class="text-left p-3">Outputs [[]]</th>
+        <th class="text-left p-3">Actualizado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in scripts %}
+      <tr class="border-t">
+        <td class="p-3 font-medium">{{ s.name }}</td>
+        <td class="p-3 text-sm text-gray-600">{{ s.input_params|join:", " }}</td>
+        <td class="p-3 text-sm text-gray-600">{{ s.output_params|join:", " }}</td>
+        <td class="p-3 text-sm text-gray-500">{{ s.updated_at|date:"Y-m-d H:i" }}</td>
+        <td class="p-3">
+          <a href="{% url 'scripts:edit' s.pk %}" class="text-blue-600">Editar</a> ·
+          <a href="{% url 'scripts:preview' s.pk %}" class="text-blue-600">Preview</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="p-6 text-center text-gray-500">No hay scripts aún.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

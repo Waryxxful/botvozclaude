@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 max-w-3xl">
+  <h1 class="text-2xl font-bold mb-4">{{ title }}</h1>
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+    <div>
+      <label class="block font-medium">Nombre</label>
+      {{ form.name }}
+    </div>
+    <div>
+      <label class="block font-medium">Descripción</label>
+      {{ form.description }}
+    </div>
+    <div>
+      <label class="block font-medium">Saludo inicial</label>
+      {{ form.greeting }}
+    </div>
+    <div>
+      <label class="block font-medium">Prompt / instrucciones para el bot</label>
+      <div class="text-xs text-gray-500 mb-1">
+        Usa <code>&#123;&#123;param&#125;&#125;</code> para datos que pases por código y
+        <code>[[param]]</code> para datos que el bot debe recolectar.
+      </div>
+      {{ form.prompt_template }}
+    </div>
+    {% if form.errors %}<div class="text-red-600">{{ form.errors }}</div>{% endif %}
+    <button class="bg-blue-600 text-white px-4 py-2 rounded">Guardar</button>
+    <a href="{% url 'scripts:list' %}" class="px-4 py-2">Cancelar</a>
+  </form>
+
+  {% if script %}
+  <div class="mt-6 bg-gray-50 p-4 rounded text-sm">
+    <div><strong>Inputs detectados:</strong> {{ script.input_params|join:", "|default:"—" }}</div>
+    <div><strong>Outputs detectados:</strong> {{ script.output_params|join:", "|default:"—" }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

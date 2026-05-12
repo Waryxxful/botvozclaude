@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="p-6 max-w-3xl">
+  <h1 class="text-2xl font-bold mb-4">Preview: {{ script.name }}</h1>
+  <p class="text-sm text-gray-500 mb-2">Los <code>&#123;&#123;param&#125;&#125;</code> se reemplazaron con placeholders <code>&lt;param&gt;</code> de ejemplo.</p>
+  <pre class="bg-gray-100 p-4 rounded whitespace-pre-wrap text-sm">{{ rendered }}</pre>
+  <a href="{% url 'scripts:list' %}" class="text-blue-600 mt-4 inline-block">← Volver</a>
+</div>
+{% endblock %}
