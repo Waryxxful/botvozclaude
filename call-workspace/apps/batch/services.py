@@ -2,11 +2,7 @@
 
 from typing import Any
 
-try:
-    import httpx
-except ImportError:  # pragma: no cover — httpx not needed during tests (always mocked)
-    from unittest.mock import MagicMock
-    httpx = MagicMock()  # type: ignore[assignment]
+import httpx
 
 from apps.scripts.parsers import OUTPUT_PATTERN, render_template
 
