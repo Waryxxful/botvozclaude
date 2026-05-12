@@ -9,6 +9,7 @@ from .routes.health import router as health_router
 from .routes.admin import router as admin_router
 from .routes.telnyx_webhook import router as telnyx_router
 from .routes.test_ui import router as test_ui_router
+from .routes.calls import router as calls_router
 
 logger = structlog.get_logger(__name__)
 
@@ -48,6 +49,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_router, tags=["Admin"])
     app.include_router(telnyx_router, tags=["Telephony"])
     app.include_router(test_ui_router, tags=["Test UI"])
+    app.include_router(calls_router, tags=["Calls"])
 
     return app
 
