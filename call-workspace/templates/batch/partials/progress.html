@@ -1,0 +1,9 @@
+<div class="bg-white p-4 rounded shadow">
+  <div class="flex justify-between text-sm mb-1">
+    <span>{{ job.done_calls }}/{{ job.total_calls }} completadas · {{ job.failed_calls }} fallidas</span>
+    <span>{{ job.get_status_display }}</span>
+  </div>
+  <div class="w-full bg-gray-200 rounded h-3">
+    <div class="bg-blue-600 h-3 rounded" style="width: {{ pct }}%"></div>
+  </div>
+</div>
