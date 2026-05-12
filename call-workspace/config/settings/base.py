@@ -68,12 +68,16 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRES_DB", "callworkspace"),
-        "USER": env("POSTGRES_USER", "postgres"),
-        "PASSWORD": env("POSTGRES_PASSWORD", "postgres"),
-        "HOST": env("POSTGRES_HOST", "db"),
-        "PORT": env("POSTGRES_PORT", "5432"),
+        "ENGINE": "mssql",
+        "NAME": os.getenv("MSSQL_DB", "callworkspace"),
+        "USER": os.getenv("MSSQL_USER", "sa"),
+        "PASSWORD": os.getenv("MSSQL_PASSWORD", ""),
+        "HOST": os.getenv("MSSQL_HOST", "localhost"),
+        "PORT": os.getenv("MSSQL_PORT", "1433"),
+        "OPTIONS": {
+            "driver": os.getenv("MSSQL_DRIVER", "ODBC Driver 18 for SQL Server"),
+            "extra_params": "TrustServerCertificate=yes;",
+        },
     }
 }
 
@@ -135,3 +139,14 @@ FTP_PASSWORD = env("FTP_PASSWORD", "")
 FTP_PORT = int(env("FTP_PORT", "21"))
 FTP_USE_SFTP = env("FTP_USE_SFTP", "false").lower() == "true"
 FTP_BASE_PATH = env("FTP_BASE_PATH", "/")
+
+# --- GCP / Vertex AI ---
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
+GCP_REGION = os.getenv("GCP_REGION", "us-central1")
+GCS_AUDIO_BUCKET = os.getenv("GCS_AUDIO_BUCKET", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+
+# --- BOT_VOZ ---
+BOT_VOZ_BASE_URL = os.getenv("BOT_VOZ_BASE_URL", "http://localhost:8080")
+BOT_VOZ_TIMEOUT_SECONDS = int(os.getenv("BOT_VOZ_TIMEOUT_SECONDS", "30"))
+WEBHOOK_PUBLIC_URL = os.getenv("WEBHOOK_PUBLIC_URL", "http://localhost:8000")
