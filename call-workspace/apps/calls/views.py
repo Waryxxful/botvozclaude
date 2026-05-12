@@ -1,9 +1,8 @@
-import uuid
 import json
 import urllib.parse
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST, require_http_methods
+from django.views.decorators.http import require_POST
 from django.http import HttpResponse
 from django.core.paginator import Paginator
 from django.db.models import Avg, Count, Q
@@ -151,54 +150,6 @@ def call_detail(request, call_id):
 def campaign_agents(request, campaign_id):
     agents = Agent.objects.filter(campaigns=campaign_id, is_active=True).order_by("name")
     return render(request, "calls/partials/agent_options.html", {"agents": agents})
-
-
-@login_required
-@require_http_methods(["GET", "POST"])
-def upload_call(request):
-    campaigns = Campaign.objects.filter(is_active=True)
-
-    if request.method == "POST":
-        campaign_id = request.POST.get("campaign")
-        agent_id = request.POST.get("agent") or None
-        call_date = request.POST.get("call_date") or None
-        audio = request.FILES.get("audio")
-
-        errors = {}
-        if not campaign_id:
-            errors["campaign"] = "Selecciona una campaña."
-        if not audio:
-            errors["audio"] = "El archivo de audio es obligatorio."
-        else:
-            allowed = (".mp3", ".wav", ".m4a", ".ogg", ".flac")
-            if not audio.name.lower().endswith(allowed):
-                errors["audio"] = "Formato no soportado. Usa MP3, WAV, M4A, OGG o FLAC."
-
-        if errors:
-            return render(request, "calls/upload.html", {
-                "campaigns": campaigns,
-                "errors": errors,
-                "post": request.POST,
-            })
-
-        campaign = get_object_or_404(Campaign, id=campaign_id)
-        agent = get_object_or_404(Agent, id=agent_id) if agent_id else None
-
-        call = Call.objects.create(
-            campaign=campaign,
-            agent=agent,
-            ftp_path=f"manual/{uuid.uuid4().hex}/{audio.name}",
-            audio_file=audio,
-            call_date=call_date or None,
-            status=Call.Status.PENDING,
-        )
-
-        from apps.processing.tasks import process_call_task
-        process_call_task.delay(call.id)
-
-        return redirect("calls:detail", call_id=call.id)
-
-    return render(request, "calls/upload.html", {"campaigns": campaigns})
 
 
 @login_required

@@ -3,7 +3,6 @@ from ninja.security import django_auth
 
 from .calls import router as calls_router
 from .campaigns import router as campaigns_router
-from .reviews import router as reviews_router
 from .processing import router as processing_router
 
 api = NinjaAPI(
@@ -25,5 +24,4 @@ api = NinjaAPI(
 
 api.add_router("/calls/", calls_router, tags=["Calls"])
 api.add_router("/campaigns/", campaigns_router, tags=["Campaigns"])
-api.add_router("/reviews/", reviews_router, tags=["Reviews"])
 api.add_router("/processing/", processing_router, tags=["Processing"])

@@ -11,7 +11,6 @@ urlpatterns = [
     path("api/v1/", api.urls),
     path("", RedirectView.as_view(url="/calls/dashboard/", permanent=False)),
     path("calls/", include("apps.calls.urls")),
-    path("reviews/", include("apps.reviews.urls")),
     path("campaigns/", include("apps.campaigns.urls")),
     path("media/<path:path>", serve, {"document_root": settings.MEDIA_ROOT}),
 ]

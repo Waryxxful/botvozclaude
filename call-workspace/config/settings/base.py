@@ -29,7 +29,6 @@ LOCAL_APPS = [
     "apps.accounts",
     "apps.campaigns",
     "apps.calls",
-    "apps.reviews",
     "apps.processing",
 ]
 
@@ -116,13 +115,6 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
 FTP_POLL_INTERVAL = int(env("FTP_POLL_INTERVAL", "900"))
-
-CELERY_BEAT_SCHEDULE = {
-    "poll-ftp": {
-        "task": "apps.processing.tasks.poll_ftp_task",
-        "schedule": FTP_POLL_INTERVAL,
-    }
-}
 
 # AssemblyAI
 ASSEMBLYAI_API_KEY = env("ASSEMBLYAI_API_KEY", "")
