@@ -144,3 +144,10 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
 BOT_VOZ_BASE_URL = os.getenv("BOT_VOZ_BASE_URL", "http://localhost:8080")
 BOT_VOZ_TIMEOUT_SECONDS = int(os.getenv("BOT_VOZ_TIMEOUT_SECONDS", "30"))
 WEBHOOK_PUBLIC_URL = os.getenv("WEBHOOK_PUBLIC_URL", "http://localhost:8000")
+
+CELERY_BEAT_SCHEDULE = {
+    "sweep-orphan-calls": {
+        "task": "apps.calls.tasks.sweep_orphan_calls",
+        "schedule": 900.0,  # every 15 minutes
+    },
+}
