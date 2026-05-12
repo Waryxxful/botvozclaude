@@ -1,109 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Llamadas — Call Workspace{% endblock %}
-
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-    <h1 class="text-xl font-semibold text-gray-900">Llamadas</h1>
-    <a href="{% url 'calls:upload' %}"
-       class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-        + Nueva llamada
-    </a>
+<div class="p-6">
+  <h1 class="text-2xl font-bold mb-4">Llamadas</h1>
+  <table class="w-full bg-white shadow rounded text-sm">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="text-left p-2">Teléfono</th>
+        <th class="text-left p-2">Campaña</th>
+        <th class="text-left p-2">Estado</th>
+        <th class="text-left p-2">Creada</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in calls %}
+      <tr class="border-t">
+        <td class="p-2">{{ c.phone_number }}</td>
+        <td class="p-2">{{ c.campaign.name }}</td>
+        <td class="p-2">{{ c.get_status_display }}</td>
+        <td class="p-2">{{ c.created_at|date:"Y-m-d H:i" }}</td>
+        <td class="p-2"><a href="{% url 'calls:detail' c.pk %}" class="text-blue-600">Ver</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="p-6 text-center text-gray-500">No hay llamadas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
-
-<div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-5 p-4">
-    <form id="filters"
-          hx-get="{% url 'calls:list' %}"
-          hx-trigger="submit, change from:select, change from:input[type=date], change from:input[type=number]"
-          hx-target="#calls-container"
-          hx-swap="outerHTML"
-          hx-push-url="true"
-          class="space-y-3">
-
-        <div class="flex flex-wrap gap-3 items-end">
-
-            <div class="flex flex-col gap-1 min-w-[200px]">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Buscar</label>
-                <div class="flex">
-                    <input type="text" name="q" value="{{ q }}"
-                           placeholder="Agente o campaña..."
-                           class="rounded-l-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500 w-full">
-                    <button type="submit"
-                            class="rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 text-gray-500 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Campaña</label>
-                <select name="campaign"
-                    class="rounded-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500">
-                    <option value="">Todas</option>
-                    {% for campaign in campaigns %}
-                    <option value="{{ campaign.id }}" {% if selected_campaign == campaign.id|stringformat:"s" %}selected{% endif %}>
-                        {{ campaign.name }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Estado</label>
-                <select name="status"
-                    class="rounded-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500">
-                    <option value="">Todos</option>
-                    {% for value, label in statuses %}
-                    <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Fecha desde</label>
-                <input type="date" name="date_from" value="{{ date_from }}"
-                       class="rounded-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500">
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Fecha hasta</label>
-                <input type="date" name="date_to" value="{{ date_to }}"
-                       class="rounded-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500">
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Score mín</label>
-                <input type="number" name="score_min" value="{{ score_min }}" min="1" max="10"
-                       placeholder="1"
-                       class="rounded-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500 w-20">
-            </div>
-
-            <div class="flex flex-col gap-1">
-                <label class="text-xs font-medium text-gray-500 uppercase tracking-wide">Score máx</label>
-                <input type="number" name="score_max" value="{{ score_max }}" min="1" max="10"
-                       placeholder="10"
-                       class="rounded-lg border border-gray-300 text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-500 w-20">
-            </div>
-
-            <div class="htmx-indicator self-center mt-3">
-                <svg class="animate-spin h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                </svg>
-            </div>
-
-            {% if q or selected_campaign or selected_status or date_from or date_to or score_min or score_max %}
-            <a href="{% url 'calls:list' %}"
-               class="self-end text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 pb-1.5">
-                Limpiar filtros
-            </a>
-            {% endif %}
-        </div>
-    </form>
-</div>
-
-{% include "calls/partials/table.html" %}
-
 {% endblock %}

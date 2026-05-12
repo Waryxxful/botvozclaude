@@ -17,7 +17,6 @@
                 <a href="{% url 'calls:dashboard' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Dashboard</a>
                 <a href="{% url 'calls:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Llamadas</a>
                 <a href="{% url 'campaigns:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Campañas</a>
-                <a href="{% url 'campaigns:agent_list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Agentes</a>
                 <a href="{% url 'scripts:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Scripts</a>
                 {% if request.user.is_admin_role %}
                 <a href="/admin/" class="text-sm text-slate-300 hover:text-white transition-colors">Admin</a>

@@ -1,9 +1,10 @@
 from ninja import Router
 from django.shortcuts import get_object_or_404
 from typing import Optional
+import uuid
 
-from apps.calls.models import Call, ComplianceAnalysis
-from .schemas import CallListSchema, CallDetailSchema, ComplianceAnalysisSchema
+from apps.calls.models import Call, CallAnalysis
+from .schemas import CallListSchema, CallDetailSchema, CallAnalysisSchema
 
 router = Router(tags=["calls"])
 
@@ -16,13 +17,11 @@ def list_calls(
 ):
     """
     **Listar Llamadas**
-    
-    Obtiene un listado de todas las llamadas ingresadas en el sistema.
-    Puede filtrarse opcionalmente por la ID de la campaña o por el estatus de procesamiento (`pending`, `transcribing`, `analyzing`, `done`, `error`).
-    No incluye el texto ni análisis completo para aligerar la respuesta.
-    Requiere que el usuario esté autenticado.
+
+    Obtiene un listado de las llamadas registradas en el sistema.
+    Puede filtrarse por campaña o por estado.
     """
-    qs = Call.objects.select_related("campaign", "agent").order_by("-created_at")
+    qs = Call.objects.select_related("campaign").order_by("-created_at")
     if campaign_id:
         qs = qs.filter(campaign_id=campaign_id)
     if status:
@@ -31,27 +30,24 @@ def list_calls(
 
 
 @router.get("/{call_id}/", response={200: CallDetailSchema, 404: dict, 401: dict})
-def get_call(request, call_id: int):
+def get_call(request, call_id: uuid.UUID):
     """
     **Obtener Detalle de Llamada**
-    
-    Devuelve los detalles completos de una llamada en específico.
-    Incluye la transcripción (si la hay) y la URL del audio.
-    Si la llamada no existe, retorna 404.
+
+    Devuelve los detalles completos de una llamada específica.
     """
     return get_object_or_404(
-        Call.objects.select_related("campaign", "agent", "transcription", "analysis"),
+        Call.objects.select_related("campaign", "analysis"),
         id=call_id,
     )
 
 
-@router.get("/{call_id}/analysis/", response={200: ComplianceAnalysisSchema, 404: dict, 401: dict})
-def get_analysis(request, call_id: int):
+@router.get("/{call_id}/analysis/", response={200: CallAnalysisSchema, 404: dict, 401: dict})
+def get_analysis(request, call_id: uuid.UUID):
     """
-    **Obtener Análisis de Cumplimiento**
-    
-    Extrae exclusivamente el análisis autogenerado por el modelo LLM para una llamada específica,
-    incluyendo el score, resumen y checkboxes (script items).
+    **Obtener Análisis de Llamada**
+
+    Extrae el análisis generado por el LLM para una llamada específica.
     Devuelve 404 si la llamada aún no ha sido analizada o no existe.
     """
-    return get_object_or_404(ComplianceAnalysis, call_id=call_id)
+    return get_object_or_404(CallAnalysis, call_id=call_id)
