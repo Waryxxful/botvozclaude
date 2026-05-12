@@ -1,74 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Campañas — Call Workspace{% endblock %}
-
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-    <h1 class="text-xl font-semibold text-gray-900">Campañas</h1>
-    <a href="{% url 'campaigns:create' %}"
-       class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-        + Nueva campaña
-    </a>
-</div>
-
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="bg-gray-50 border-b border-gray-200 text-left">
-                <th class="px-4 py-3 font-medium text-gray-500">Nombre</th>
-                <th class="px-4 py-3 font-medium text-gray-500">Directorio FTP</th>
-                <th class="px-4 py-3 font-medium text-gray-500 text-center">Llamadas</th>
-                <th class="px-4 py-3 font-medium text-gray-500 text-center">Estado</th>
-                <th class="px-4 py-3 font-medium text-gray-500"></th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-            {% for campaign in campaigns %}
-            <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-3">
-                    <p class="font-medium text-gray-900">{{ campaign.name }}</p>
-                    {% if campaign.description %}
-                    <p class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{{ campaign.description }}</p>
-                    {% endif %}
-                </td>
-                <td class="px-4 py-3 text-gray-500 font-mono text-xs">{{ campaign.ftp_directory }}</td>
-                <td class="px-4 py-3 text-center text-gray-700 font-medium">{{ campaign.call_count }}</td>
-                <td class="px-4 py-3 text-center">
-                    <span id="badge-{{ campaign.id }}">
-                        {% if campaign.is_active %}
-                        <button hx-post="{% url 'campaigns:toggle' campaign.id %}"
-                                hx-target="#badge-{{ campaign.id }}"
-                                hx-swap="innerHTML"
-                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer">
-                            Activa
-                        </button>
-                        {% else %}
-                        <button hx-post="{% url 'campaigns:toggle' campaign.id %}"
-                                hx-target="#badge-{{ campaign.id }}"
-                                hx-swap="innerHTML"
-                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer">
-                            Inactiva
-                        </button>
-                        {% endif %}
-                    </span>
-                </td>
-                <td class="px-4 py-3 text-right">
-                    <a href="{% url 'campaigns:edit' campaign.id %}"
-                       class="text-xs text-slate-600 hover:text-slate-900 underline underline-offset-2">
-                        Editar
-                    </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5" class="px-4 py-12 text-center text-gray-400 text-sm">
-                    No hay campañas.
-                    <a href="{% url 'campaigns:create' %}" class="text-slate-600 underline ml-1">Crear una</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="p-6">
+  <div class="flex justify-between mb-4">
+    <h1 class="text-2xl font-bold">Campañas</h1>
+    <a href="{% url 'campaigns:create' %}" class="bg-blue-600 text-white px-4 py-2 rounded">Nueva campaña</a>
+  </div>
+  <table class="w-full bg-white shadow rounded">
+    <thead class="bg-gray-100">
+      <tr>
+        <th class="text-left p-3">Nombre</th>
+        <th class="text-left p-3">Script</th>
+        <th class="text-left p-3">Activa</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in campaigns %}
+      <tr class="border-t">
+        <td class="p-3 font-medium">{{ c.name }}</td>
+        <td class="p-3">{{ c.script.name|default:"—" }}</td>
+        <td class="p-3">{% if c.is_active %}<span class="text-green-600">●</span>{% else %}<span class="text-gray-400">●</span>{% endif %}</td>
+        <td class="p-3"><a href="{% url 'campaigns:edit' c.pk %}" class="text-blue-600">Editar</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="p-6 text-center text-gray-500">No hay campañas.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
 {% endblock %}
