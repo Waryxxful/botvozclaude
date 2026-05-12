@@ -18,13 +18,12 @@ from .function_registry import get_tools_for_profile, get_gemini_function_declar
 
 logger = structlog.get_logger(__name__)
 
-MODEL_ID = "gemini-2.0-flash-001"
-
 
 class GeminiClient:
     def __init__(self) -> None:
         settings = get_settings()
         vertexai.init(project=settings.gcp_project_id, location=settings.gcp_region)
+        self._model_id = settings.gemini_model
         self._generation_config = GenerationConfig(
             temperature=0.7,
             max_output_tokens=512,
@@ -62,7 +61,7 @@ class GeminiClient:
         tools = self._build_tools(session)
 
         model = GenerativeModel(
-            model_name=MODEL_ID,
+            model_name=self._model_id,
             system_instruction=system_prompt,
             tools=tools,
             generation_config=self._generation_config,
@@ -113,7 +112,7 @@ class GeminiClient:
         system_prompt = build_system_prompt(session)
 
         model = GenerativeModel(
-            model_name=MODEL_ID,
+            model_name=self._model_id,
             system_instruction=system_prompt,
             generation_config=self._generation_config,
         )
