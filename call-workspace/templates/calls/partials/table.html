@@ -1,0 +1,72 @@
+<div id="calls-container">
+    <div class="flex items-center justify-between mb-3">
+        <span class="text-sm text-gray-500">
+            {{ total_count }} resultado{% if total_count != 1 %}s{% endif %}
+        </span>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <span class="text-sm text-gray-400">
+            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-left">
+                    <th class="px-4 py-3 font-medium text-gray-500">#</th>
+                    <th class="px-4 py-3 font-medium text-gray-500">Campaña</th>
+                    <th class="px-4 py-3 font-medium text-gray-500">Agente</th>
+                    <th class="px-4 py-3 font-medium text-gray-500">Fecha</th>
+                    <th class="px-4 py-3 font-medium text-gray-500">Estado</th>
+                    <th class="px-4 py-3 font-medium text-gray-500 text-center">Score</th>
+                    <th class="px-4 py-3 font-medium text-gray-500"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% include "calls/partials/rows.html" %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-center gap-1 mt-4">
+        {% if page_obj.has_previous %}
+        <a href="?{{ query_string }}{% if query_string %}&{% endif %}page={{ page_obj.previous_page_number }}"
+           hx-get="{% url 'calls:list' %}?{{ query_string }}{% if query_string %}&{% endif %}page={{ page_obj.previous_page_number }}"
+           hx-target="#calls-container"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           class="px-3 py-1.5 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+            ← Anterior
+        </a>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <span class="px-3 py-1.5 rounded-lg text-sm bg-slate-800 text-white font-medium">{{ num }}</span>
+            {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+            <a href="?{{ query_string }}{% if query_string %}&{% endif %}page={{ num }}"
+               hx-get="{% url 'calls:list' %}?{{ query_string }}{% if query_string %}&{% endif %}page={{ num }}"
+               hx-target="#calls-container"
+               hx-swap="outerHTML"
+               hx-push-url="true"
+               class="px-3 py-1.5 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+                {{ num }}
+            </a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <a href="?{{ query_string }}{% if query_string %}&{% endif %}page={{ page_obj.next_page_number }}"
+           hx-get="{% url 'calls:list' %}?{{ query_string }}{% if query_string %}&{% endif %}page={{ page_obj.next_page_number }}"
+           hx-target="#calls-container"
+           hx-swap="outerHTML"
+           hx-push-url="true"
+           class="px-3 py-1.5 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors">
+            Siguiente →
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

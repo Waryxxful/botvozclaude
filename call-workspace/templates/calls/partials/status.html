@@ -1,0 +1,46 @@
+{% if call.status == 'done' %}
+{# Replace the entire processing section with full results — trigger a page reload so layout is correct #}
+<div hx-on:htmx:load="window.location.reload()"></div>
+
+{% elif call.status == 'error' %}
+<div class="bg-white rounded-xl border border-red-200 shadow-sm p-8 text-center">
+    <svg class="mx-auto h-8 w-8 text-red-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z"/>
+    </svg>
+    <p class="text-gray-700 font-medium mb-1">Error en el procesamiento</p>
+    <p class="text-red-600 text-sm font-mono">{{ call.error_message }}</p>
+    <button
+        hx-post="{% url 'calls:reprocess' call.id %}"
+        hx-target="#status-badge"
+        hx-swap="outerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        class="mt-4 text-sm font-medium px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
+        Reintentar
+    </button>
+</div>
+
+{% else %}
+{# Still processing — keep polling every 5s #}
+<div id="processing-panel"
+     hx-get="{% url 'calls:status_partial' call.id %}"
+     hx-trigger="every 5s"
+     hx-swap="outerHTML">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-12 text-center">
+        <svg class="mx-auto h-8 w-8 text-blue-400 animate-spin mb-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <p class="text-gray-700 font-semibold">{{ call.get_status_display }}…</p>
+        <div class="mt-4 flex justify-center gap-6 text-xs text-gray-400">
+            <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full {% if call.status == 'transcribing' or call.status == 'analyzing' or call.status == 'done' %}bg-green-400{% else %}bg-gray-300{% endif %}"></span>
+                Transcripción
+            </span>
+            <span class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full {% if call.status == 'analyzing' or call.status == 'done' %}bg-green-400{% elif call.status == 'transcribing' %}bg-blue-400 animate-pulse{% else %}bg-gray-300{% endif %}"></span>
+                Análisis IA
+            </span>
+        </div>
+    </div>
+</div>
+{% endif %}

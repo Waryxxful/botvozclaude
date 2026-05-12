@@ -1,0 +1,39 @@
+<div class="bg-white rounded-xl border border-gray-200 shadow-sm">
+    <div class="px-5 py-4 border-b border-gray-100">
+        <h2 class="font-semibold text-gray-900">Revisión del supervisor</h2>
+        {% if review.reviewed_at %}
+        <p class="text-xs text-gray-400 mt-0.5">Guardado {{ review.reviewed_at|date:"d/m/Y H:i" }}</p>
+        {% endif %}
+    </div>
+
+    <form hx-post="{% url 'reviews:form' call.id %}"
+          hx-target="#review-section"
+          hx-swap="innerHTML"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+          class="px-5 py-4 space-y-4">
+        {% csrf_token %}
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Observaciones</label>
+            <textarea name="notes" rows="4"
+                placeholder="Escribe tus observaciones sobre esta llamada…"
+                class="w-full rounded-lg border border-gray-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500 resize-none">{{ review.extra_data.notes|default:"" }}</textarea>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+                Score supervisado
+                <span class="text-gray-400 font-normal">(opcional, 1–10)</span>
+            </label>
+            <input type="number" name="score_override" min="1" max="10"
+                value="{{ review.extra_data.score_override|default:'' }}"
+                placeholder="—"
+                class="w-24 rounded-lg border border-gray-300 text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-500">
+        </div>
+
+        <button type="submit"
+            class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            Guardar revisión
+        </button>
+    </form>
+</div>

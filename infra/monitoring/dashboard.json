@@ -1,0 +1,66 @@
+{
+  "displayName": "Voice Bot Dashboard",
+  "gridLayout": {
+    "columns": "2",
+    "widgets": [
+      {
+        "title": "Llamadas Activas",
+        "scorecard": {
+          "timeSeriesQuery": {
+            "timeSeriesFilter": {
+              "filter": "metric.type=\"custom.googleapis.com/voicebot/active_calls\""
+            }
+          }
+        }
+      },
+      {
+        "title": "Latencia STT (p95, ms)",
+        "xyChart": {
+          "dataSets": [{
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "metric.type=\"custom.googleapis.com/voicebot/stt_latency_ms\"",
+                "aggregation": {
+                  "alignmentPeriod": "60s",
+                  "perSeriesAligner": "ALIGN_PERCENTILE_95"
+                }
+              }
+            }
+          }]
+        }
+      },
+      {
+        "title": "Latencia LLM (p95, ms)",
+        "xyChart": {
+          "dataSets": [{
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "metric.type=\"custom.googleapis.com/voicebot/llm_latency_ms\"",
+                "aggregation": {
+                  "alignmentPeriod": "60s",
+                  "perSeriesAligner": "ALIGN_PERCENTILE_95"
+                }
+              }
+            }
+          }]
+        }
+      },
+      {
+        "title": "Latencia TTS (p95, ms)",
+        "xyChart": {
+          "dataSets": [{
+            "timeSeriesQuery": {
+              "timeSeriesFilter": {
+                "filter": "metric.type=\"custom.googleapis.com/voicebot/tts_latency_ms\"",
+                "aggregation": {
+                  "alignmentPeriod": "60s",
+                  "perSeriesAligner": "ALIGN_PERCENTILE_95"
+                }
+              }
+            }
+          }]
+        }
+      }
+    ]
+  }
+}

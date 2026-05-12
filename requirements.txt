@@ -1,0 +1,41 @@
+# Framework web
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+pydantic>=2.10.0
+pydantic-settings>=2.5.0
+
+# Telefonía + WebSocket
+websockets==12.0
+
+# STT
+google-cloud-speech>=2.27.0
+deepgram-sdk==3.5.0
+
+# TTS
+google-cloud-texttospeech>=2.18.0
+
+# LLM
+google-cloud-aiplatform>=1.70.0
+
+# Persistencia GCP
+google-cloud-firestore>=2.18.0
+google-cloud-pubsub>=2.23.0
+
+# Audio processing
+soundfile==0.12.1
+numpy>=2.1.0
+webrtcvad==2.0.10
+
+# HTTP async
+httpx>=0.27.0
+aiohttp>=3.9.5
+
+# Criptografía (verificación de firma Ed25519 en webhooks Telnyx)
+cryptography==42.0.8
+
+# Utilidades
+python-dotenv==1.0.1
+pyyaml==6.0.1
+structlog==24.1.0
+tenacity==8.3.0
+prometheus-client==0.20.0

@@ -1,0 +1,7 @@
+<button hx-post="{% url 'campaigns:toggle' campaign.id %}"
+        hx-target="#badge-{{ campaign.id }}"
+        hx-swap="innerHTML"
+        hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ css }} hover:opacity-80 transition-opacity cursor-pointer">
+    {{ label }}
+</button>

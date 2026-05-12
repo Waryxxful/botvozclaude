@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Call Workspace{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body class="h-full">
+
+<nav class="bg-slate-800 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-14">
+            <div class="flex items-center gap-6">
+                <span class="font-bold text-lg tracking-tight">Call Workspace</span>
+                <a href="{% url 'calls:dashboard' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Dashboard</a>
+                <a href="{% url 'calls:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Llamadas</a>
+                <a href="{% url 'campaigns:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Campañas</a>
+                <a href="{% url 'campaigns:agent_list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Agentes</a>
+                {% if request.user.is_admin_role %}
+                <a href="/admin/" class="text-sm text-slate-300 hover:text-white transition-colors">Admin</a>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-4 text-sm">
+                <span class="text-slate-400">{{ request.user.get_full_name|default:request.user.username }}</span>
+                <a href="{% url 'logout' %}" class="text-slate-300 hover:text-white transition-colors">Salir</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+{% if messages %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 space-y-2">
+    {% for message in messages %}
+    <div class="rounded-md px-4 py-3 text-sm
+        {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
+        {% elif message.tags == 'success' %}bg-green-50 text-green-700 border border-green-200
+        {% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

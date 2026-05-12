@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Call Workspace{% endblock %}
+
+{% block content %}
+<div class="mb-4 text-sm text-gray-500">
+    <a href="{% url 'campaigns:agent_list' %}" class="hover:text-gray-800">Agentes</a>
+    <span class="mx-2">/</span>
+    <span class="text-gray-800">{{ title }}</span>
+</div>
+
+<div class="max-w-lg">
+    <h1 class="text-xl font-semibold text-gray-900 mb-6">{{ title }}</h1>
+
+    <form method="post" class="space-y-5">
+        {% csrf_token %}
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre <span class="text-red-500">*</span>
+                </label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ form.name.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">ID Empleado</label>
+                {{ form.employee_id }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Campañas asignadas</label>
+                <div class="space-y-1.5">
+                    {% for checkbox in form.campaigns %}
+                    <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                        {{ checkbox.tag }}
+                        <span>{{ checkbox.choice_label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                {{ form.is_active }}
+                <label class="text-sm text-gray-700">Agente activo</label>
+            </div>
+
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button type="submit"
+                class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
+                Guardar
+            </button>
+            <a href="{% url 'campaigns:agent_list' %}" class="text-sm text-gray-500 hover:text-gray-700">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
