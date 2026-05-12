@@ -5,6 +5,7 @@ from .batch import router as batch_router
 from .calls import router as calls_router
 from .campaigns import router as campaigns_router
 from .processing import router as processing_router
+from .webhook import router as webhook_router
 
 api = NinjaAPI(
     auth=django_auth,
@@ -23,6 +24,7 @@ api = NinjaAPI(
     urls_namespace="api",
 )
 
+api.add_router("/calls", webhook_router, tags=["Calls"])
 api.add_router("/calls/", calls_router, tags=["Calls"])
 api.add_router("/campaigns/", campaigns_router, tags=["Campaigns"])
 api.add_router("/processing/", processing_router, tags=["Processing"])
