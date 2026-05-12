@@ -83,6 +83,15 @@ class Settings(BaseSettings):
     # Pub/Sub
     pubsub_topic_call_events: str = Field("voice-bot-call-events", alias="PUBSUB_TOPIC_CALL_EVENTS")
 
+    # Gemini model (upgradeable)
+    gemini_model: str = Field("gemini-2.5-pro", alias="GEMINI_MODEL")
+
+    # GCS for call audio
+    gcs_audio_bucket: str = Field("", alias="GCS_AUDIO_BUCKET")
+
+    # Django webhook timeout
+    django_webhook_timeout_seconds: int = Field(10, alias="DJANGO_WEBHOOK_TIMEOUT_SECONDS")
+
     # App
     app_host: str = Field("0.0.0.0", alias="APP_HOST")
     app_port: int = Field(8080, alias="APP_PORT")
