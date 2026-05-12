@@ -1,9 +1,20 @@
 {% extends "base.html" %}
+{% block page_title %}Preview: {{ script.name }}{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'scripts:list' %}">Scripts</a></li>
+<li class="breadcrumb-item active">Preview</li>
+{% endblock %}
 {% block content %}
-<div class="p-6 max-w-3xl">
-  <h1 class="text-2xl font-bold mb-4">Preview: {{ script.name }}</h1>
-  <p class="text-sm text-gray-500 mb-2">Los <code>&#123;&#123;param&#125;&#125;</code> se reemplazaron con placeholders <code>&lt;param&gt;</code> de ejemplo.</p>
-  <pre class="bg-gray-100 p-4 rounded whitespace-pre-wrap text-sm">{{ rendered }}</pre>
-  <a href="{% url 'scripts:list' %}" class="text-blue-600 mt-4 inline-block">← Volver</a>
+<div class="row">
+  <div class="col-xl-8">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Preview: {{ script.name }}</h6></div>
+      <div class="card-body">
+        <p class="text-muted small">Los <code>&#123;&#123;param&#125;&#125;</code> se reemplazaron con placeholders de ejemplo.</p>
+        <pre class="bg-light p-3 rounded" style="white-space:pre-wrap;">{{ rendered }}</pre>
+        <a href="{% url 'scripts:list' %}" class="btn btn-outline-secondary mt-3">← Volver</a>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

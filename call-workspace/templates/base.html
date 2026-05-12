@@ -1,52 +1,209 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-gray-50">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Call Workspace{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block page_title %}Voice Bot{% endblock %} — CRM</title>
+  <link rel="icon" href="{% static 'assets/images/favicon.ico' %}" type="image/x-icon" />
+  <link rel="stylesheet" href="{% static 'assets/vendors/css/vendors.min.css' %}" />
+  <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}" />
+  <link rel="stylesheet" href="{% static 'assets/css/theme.min.css' %}" />
 </head>
-<body class="h-full">
+<body>
 
-<nav class="bg-slate-800 text-white shadow-md">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-14">
-            <div class="flex items-center gap-6">
-                <span class="font-bold text-lg tracking-tight">Call Workspace</span>
-                <a href="{% url 'calls:dashboard' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Dashboard</a>
-                <a href="{% url 'calls:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Llamadas</a>
-                <a href="{% url 'campaigns:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Campañas</a>
-                <a href="{% url 'scripts:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Scripts</a>
-                <a href="{% url 'batch:list' %}" class="text-sm text-slate-300 hover:text-white transition-colors">Lotes</a>
-                {% if request.user.is_admin_role %}
-                <a href="/admin/" class="text-sm text-slate-300 hover:text-white transition-colors">Admin</a>
-                {% endif %}
-            </div>
-            <div class="flex items-center gap-4 text-sm">
-                <span class="text-slate-400">{{ request.user.get_full_name|default:request.user.username }}</span>
-                <a href="{% url 'logout' %}" class="text-slate-300 hover:text-white transition-colors">Salir</a>
-            </div>
-        </div>
+<!-- ======================================================
+     SIDEBAR
+====================================================== -->
+<nav class="nxl-navigation">
+  <div class="navbar-wrapper">
+    <div class="m-header">
+      <a href="{% url 'calls:dashboard' %}" class="b-brand">
+        <span class="nxl-mtext fw-bold fs-5">Voice Bot</span>
+      </a>
     </div>
+    <div class="navbar-content">
+      <ul class="nxl-navbar">
+
+        <li class="nxl-item nxl-caption"><label>Navegación</label></li>
+
+        <!-- Dashboard -->
+        <li class="nxl-item {% if request.path == '/calls/dashboard/' %}nxl-active{% endif %}">
+          <a href="{% url 'calls:dashboard' %}" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-monitor"></i></span>
+            <span class="nxl-mtext">Dashboard</span>
+          </a>
+        </li>
+
+        <!-- Llamadas -->
+        <li class="nxl-item nxl-hasmenu {% if '/calls/' in request.path and 'dashboard' not in request.path %}nxl-active{% endif %}">
+          <a href="javascript:void(0);" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-phone-incoming"></i></span>
+            <span class="nxl-mtext">Llamadas</span>
+            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+          </a>
+          <ul class="nxl-submenu">
+            <li class="nxl-item {% if request.path == '/calls/' %}nxl-active{% endif %}">
+              <a class="nxl-link" href="{% url 'calls:list' %}">Lista de llamadas</a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Lotes -->
+        <li class="nxl-item nxl-hasmenu {% if '/batch/' in request.path %}nxl-active{% endif %}">
+          <a href="javascript:void(0);" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-layers"></i></span>
+            <span class="nxl-mtext">Lotes</span>
+            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+          </a>
+          <ul class="nxl-submenu">
+            <li class="nxl-item {% if request.path == '/batch/' %}nxl-active{% endif %}">
+              <a class="nxl-link" href="{% url 'batch:list' %}">Ver lotes</a>
+            </li>
+            <li class="nxl-item {% if request.path == '/batch/nuevo/' %}nxl-active{% endif %}">
+              <a class="nxl-link" href="{% url 'batch:create' %}">Nuevo lote</a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Scripts -->
+        <li class="nxl-item nxl-hasmenu {% if '/scripts/' in request.path %}nxl-active{% endif %}">
+          <a href="javascript:void(0);" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-code"></i></span>
+            <span class="nxl-mtext">Scripts</span>
+            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+          </a>
+          <ul class="nxl-submenu">
+            <li class="nxl-item {% if request.path == '/scripts/' %}nxl-active{% endif %}">
+              <a class="nxl-link" href="{% url 'scripts:list' %}">Ver scripts</a>
+            </li>
+            <li class="nxl-item {% if request.path == '/scripts/nuevo/' %}nxl-active{% endif %}">
+              <a class="nxl-link" href="{% url 'scripts:create' %}">Nuevo script</a>
+            </li>
+          </ul>
+        </li>
+
+        <!-- Campañas -->
+        <li class="nxl-item nxl-hasmenu {% if '/campaigns/' in request.path %}nxl-active{% endif %}">
+          <a href="javascript:void(0);" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-target"></i></span>
+            <span class="nxl-mtext">Campañas</span>
+            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+          </a>
+          <ul class="nxl-submenu">
+            <li class="nxl-item {% if request.path == '/campaigns/' %}nxl-active{% endif %}">
+              <a class="nxl-link" href="{% url 'campaigns:list' %}">Ver campañas</a>
+            </li>
+            <li class="nxl-item {% if request.path == '/campaigns/nueva/' %}nxl-active{% endif %}">
+              <a class="nxl-link" href="{% url 'campaigns:create' %}">Nueva campaña</a>
+            </li>
+          </ul>
+        </li>
+
+        <li class="nxl-item nxl-caption"><label>Herramientas</label></li>
+
+        <!-- Bot de Prueba -->
+        <li class="nxl-item">
+          <a href="http://localhost:8080/test/" target="_blank" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-mic"></i></span>
+            <span class="nxl-mtext">Bot de Prueba</span>
+          </a>
+        </li>
+
+      </ul>
+    </div>
+  </div>
 </nav>
 
-{% if messages %}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 space-y-2">
-    {% for message in messages %}
-    <div class="rounded-md px-4 py-3 text-sm
-        {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200
-        {% elif message.tags == 'success' %}bg-green-50 text-green-700 border border-green-200
-        {% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
-        {{ message }}
+<!-- ======================================================
+     TOP HEADER
+====================================================== -->
+<header class="nxl-header">
+  <div class="header-wrapper">
+    <div class="header-left d-flex align-items-center gap-4">
+      <a href="javascript:void(0);" class="nxl-head-mobile-toggler" id="mobile-collapse">
+        <div class="hamburger hamburger--arrowturn">
+          <div class="hamburger-box"><div class="hamburger-inner"></div></div>
+        </div>
+      </a>
+      <div class="nxl-navigation-toggle">
+        <a href="javascript:void(0);" id="menu-mini-button">
+          <i class="feather-align-left"></i>
+        </a>
+        <a href="javascript:void(0);" id="menu-expend-button">
+          <i class="feather-align-left"></i>
+        </a>
+      </div>
     </div>
-    {% endfor %}
-</div>
-{% endif %}
+    <div class="header-right ms-auto d-flex align-items-center gap-3">
+      {% if user.is_authenticated %}
+      <div class="dropdown">
+        <a href="#" class="dropdown-toggle d-flex align-items-center gap-2 text-dark text-decoration-none" data-bs-toggle="dropdown">
+          <i class="feather-user fs-5"></i>
+          <span class="d-none d-sm-inline fw-medium">{{ user.username }}</span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="{% url 'admin:index' %}"><i class="feather-settings me-2"></i>Admin</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <form method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="dropdown-item text-danger"><i class="feather-log-out me-2"></i>Cerrar sesión</button>
+            </form>
+          </li>
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</header>
 
-<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    {% block content %}{% endblock %}
+<!-- ======================================================
+     MAIN CONTENT
+====================================================== -->
+<main class="nxl-container">
+  <div class="nxl-content">
+
+    <!-- Page header / breadcrumb -->
+    <div class="page-header">
+      <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+          <h5 class="m-b-10">{% block page_title %}Inicio{% endblock %}</h5>
+        </div>
+        <ul class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{% url 'calls:dashboard' %}">Home</a></li>
+          {% block breadcrumb_items %}{% endblock %}
+        </ul>
+      </div>
+    </div>
+
+    <!-- Flash messages -->
+    {% if messages %}
+    <div class="px-3">
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Page content -->
+    <div class="main-content">
+      {% block content %}{% endblock %}
+    </div>
+
+  </div>
 </main>
+
+<!-- ======================================================
+     JS
+====================================================== -->
+<script src="{% static 'assets/vendors/js/vendors.min.js' %}"></script>
+<script src="{% static 'assets/js/common-init.min.js' %}"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+{% block extra_js %}{% endblock %}
 
 </body>
 </html>

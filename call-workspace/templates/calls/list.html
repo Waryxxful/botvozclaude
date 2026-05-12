@@ -1,30 +1,41 @@
 {% extends "base.html" %}
+{% block page_title %}Llamadas{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Llamadas</li>{% endblock %}
 {% block content %}
-<div class="p-6">
-  <h1 class="text-2xl font-bold mb-4">Llamadas</h1>
-  <table class="w-full bg-white shadow rounded text-sm">
-    <thead class="bg-gray-100">
-      <tr>
-        <th class="text-left p-2">Teléfono</th>
-        <th class="text-left p-2">Campaña</th>
-        <th class="text-left p-2">Estado</th>
-        <th class="text-left p-2">Creada</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for c in calls %}
-      <tr class="border-t">
-        <td class="p-2">{{ c.phone_number }}</td>
-        <td class="p-2">{{ c.campaign.name }}</td>
-        <td class="p-2">{{ c.get_status_display }}</td>
-        <td class="p-2">{{ c.created_at|date:"Y-m-d H:i" }}</td>
-        <td class="p-2"><a href="{% url 'calls:detail' c.pk %}" class="text-blue-600">Ver</a></td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="5" class="p-6 text-center text-gray-500">No hay llamadas.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Lista de llamadas</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr><th>Teléfono</th><th>Campaña</th><th>Estado</th><th>Duración</th><th>Creada</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for c in calls %}
+              <tr>
+                <td class="fw-semibold">{{ c.phone_number }}</td>
+                <td>{{ c.campaign.name }}</td>
+                <td>
+                  {% if c.status == 'done' %}<span class="badge bg-success">Listo</span>
+                  {% elif c.status == 'calling' %}<span class="badge bg-primary">Llamando</span>
+                  {% elif c.status == 'analyzing' %}<span class="badge bg-info text-dark">Analizando</span>
+                  {% elif c.status == 'error' %}<span class="badge bg-danger">Error</span>
+                  {% else %}<span class="badge bg-secondary">{{ c.get_status_display }}</span>{% endif %}
+                </td>
+                <td><small>{{ c.duration_seconds|default:"—" }}s</small></td>
+                <td><small>{{ c.created_at|date:"Y-m-d H:i" }}</small></td>
+                <td><a href="{% url 'calls:detail' c.pk %}" class="btn btn-sm btn-outline-primary">Ver</a></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No hay llamadas.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

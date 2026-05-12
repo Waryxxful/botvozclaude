@@ -1,16 +1,41 @@
 {% extends "base.html" %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'campaigns:list' %}">Campañas</a></li>
+<li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
 {% block content %}
-<div class="p-6 max-w-2xl">
-  <h1 class="text-2xl font-bold mb-4">{{ title }}</h1>
-  <form method="post" class="space-y-4">
-    {% csrf_token %}
-    <div><label class="block font-medium">Nombre</label>{{ form.name }}</div>
-    <div><label class="block font-medium">Descripción</label>{{ form.description }}</div>
-    <div><label class="block font-medium">Script</label>{{ form.script }}</div>
-    <div class="flex items-center gap-2">{{ form.is_active }}<label>Activa</label></div>
-    {% if form.errors %}<div class="text-red-600">{{ form.errors }}</div>{% endif %}
-    <button class="bg-blue-600 text-white px-4 py-2 rounded">Guardar</button>
-    <a href="{% url 'campaigns:list' %}" class="px-4 py-2">Cancelar</a>
-  </form>
+<div class="row">
+  <div class="col-xl-6">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">{{ title }}</h6></div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          {% csrf_token %}
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nombre</label>
+            {{ form.name }}
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Descripción</label>
+            {{ form.description }}
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Script</label>
+            {{ form.script }}
+          </div>
+          <div class="col-12 d-flex align-items-center gap-2">
+            {{ form.is_active }}
+            <label class="form-label mb-0">Activa</label>
+          </div>
+          {% if form.errors %}<div class="col-12"><div class="alert alert-danger">{{ form.errors }}</div></div>{% endif %}
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'campaigns:list' %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

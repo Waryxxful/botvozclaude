@@ -1,9 +1,15 @@
-<div class="bg-white p-4 rounded shadow">
-  <div class="flex justify-between text-sm mb-1">
-    <span>{{ job.done_calls }}/{{ job.total_calls }} completadas · {{ job.failed_calls }} fallidas</span>
-    <span>{{ job.get_status_display }}</span>
+<div class="card-body">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <span class="fw-semibold">{{ job.campaign.name }} — Lote #{{ job.id }}</span>
+    <span>
+      {% if job.status == 'running' %}<span class="badge bg-primary">En curso</span>
+      {% elif job.status == 'completed' %}<span class="badge bg-success">Completado</span>
+      {% else %}<span class="badge bg-secondary">{{ job.get_status_display }}</span>{% endif %}
+    </span>
   </div>
-  <div class="w-full bg-gray-200 rounded h-3">
-    <div class="bg-blue-600 h-3 rounded" style="width: {{ pct }}%"></div>
+  <div class="progress mb-2" style="height:10px;">
+    <div class="progress-bar bg-primary progress-bar-striped {% if job.status == 'running' %}progress-bar-animated{% endif %}"
+         style="width:{{ pct }}%"></div>
   </div>
+  <small class="text-muted">{{ job.done_calls }}/{{ job.total_calls }} completadas · {{ job.failed_calls }} fallidas</small>
 </div>

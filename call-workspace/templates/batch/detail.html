@@ -1,34 +1,54 @@
 {% extends "base.html" %}
+{% block page_title %}Lote #{{ job.id }}{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'batch:list' %}">Lotes</a></li>
+<li class="breadcrumb-item active">#{{ job.id }}</li>
+{% endblock %}
 {% block content %}
-<div class="p-6 max-w-5xl">
-  <h1 class="text-2xl font-bold mb-2">Lote #{{ job.id }} — {{ job.campaign.name }}</h1>
-  <div id="progress-wrap" hx-get="{% url 'batch:progress' job.pk %}" hx-trigger="load, every 3s" hx-swap="innerHTML">
-    {% include "batch/partials/progress.html" with job=job pct=0 %}
+<div class="row g-3">
+  <!-- Progress card -->
+  <div class="col-12">
+    <div class="card" id="progress-wrap"
+         hx-get="{% url 'batch:progress' job.pk %}"
+         hx-trigger="load, every 3s"
+         hx-swap="innerHTML">
+      {% include "batch/partials/progress.html" with job=job pct=0 %}
+    </div>
   </div>
-  <h2 class="text-xl font-bold mt-6 mb-2">Items</h2>
-  <table class="w-full bg-white shadow rounded text-sm">
-    <thead class="bg-gray-100">
-      <tr>
-        <th class="p-2 text-left">Teléfono</th>
-        <th class="p-2 text-left">Estado</th>
-        <th class="p-2 text-left">Input params</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in job.items.all %}
-      <tr class="border-t">
-        <td class="p-2">{{ item.phone_number }}</td>
-        <td class="p-2">{{ item.get_status_display }}</td>
-        <td class="p-2 text-xs"><pre>{{ item.input_params }}</pre></td>
-        <td class="p-2">
-          {% with item.calls.first as call %}
-            {% if call %}<a href="{% url 'calls:detail' call.pk %}" class="text-blue-600">Ver llamada</a>{% endif %}
-          {% endwith %}
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <!-- Items table -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Items del lote</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr><th>Teléfono</th><th>Estado</th><th>Parámetros</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for item in job.items.all %}
+              <tr>
+                <td class="fw-semibold">{{ item.phone_number }}</td>
+                <td>
+                  {% if item.status == 'done' %}<span class="badge bg-success">Listo</span>
+                  {% elif item.status == 'calling' %}<span class="badge bg-primary">Llamando</span>
+                  {% elif item.status == 'failed' %}<span class="badge bg-danger">Fallido</span>
+                  {% elif item.status == 'retry' %}<span class="badge bg-warning text-dark">Reintento</span>
+                  {% else %}<span class="badge bg-secondary">Pendiente</span>{% endif %}
+                </td>
+                <td><code class="small">{{ item.input_params }}</code></td>
+                <td>
+                  {% with item.calls.first as call %}
+                    {% if call %}<a href="{% url 'calls:detail' call.pk %}" class="btn btn-sm btn-outline-primary">Ver llamada</a>{% endif %}
+                  {% endwith %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

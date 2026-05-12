@@ -1,39 +1,54 @@
 {% extends "base.html" %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'scripts:list' %}">Scripts</a></li>
+<li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
 {% block content %}
-<div class="p-6 max-w-3xl">
-  <h1 class="text-2xl font-bold mb-4">{{ title }}</h1>
-  <form method="post" class="space-y-4">
-    {% csrf_token %}
-    <div>
-      <label class="block font-medium">Nombre</label>
-      {{ form.name }}
-    </div>
-    <div>
-      <label class="block font-medium">Descripción</label>
-      {{ form.description }}
-    </div>
-    <div>
-      <label class="block font-medium">Saludo inicial</label>
-      {{ form.greeting }}
-    </div>
-    <div>
-      <label class="block font-medium">Prompt / instrucciones para el bot</label>
-      <div class="text-xs text-gray-500 mb-1">
-        Usa <code>&#123;&#123;param&#125;&#125;</code> para datos que pases por código y
-        <code>[[param]]</code> para datos que el bot debe recolectar.
+<div class="row">
+  <div class="col-xl-8">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">{{ title }}</h6></div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          {% csrf_token %}
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nombre</label>
+            <input type="text" name="name" value="{{ form.name.value|default:'' }}" class="form-control" required>
+            {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea name="description" class="form-control" rows="2">{{ form.description.value|default:'' }}</textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Saludo inicial</label>
+            <input type="text" name="greeting" value="{{ form.greeting.value|default:'' }}" class="form-control" required>
+            {% if form.greeting.errors %}<div class="text-danger small">{{ form.greeting.errors }}</div>{% endif %}
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Prompt / instrucciones para el bot</label>
+            <div class="text-muted small mb-1">
+              Usa <code>&#123;&#123;param&#125;&#125;</code> para datos de entrada y <code>[[param]]</code> para datos que el bot debe recolectar.
+            </div>
+            <textarea name="prompt_template" class="form-control font-monospace" rows="12" required>{{ form.prompt_template.value|default:'' }}</textarea>
+            {% if form.prompt_template.errors %}<div class="text-danger small">{{ form.prompt_template.errors }}</div>{% endif %}
+          </div>
+          {% if script %}
+          <div class="col-12">
+            <div class="alert alert-info p-2 small mb-0">
+              <strong>Inputs detectados:</strong> {{ script.input_params|join:", "|default:"—" }}<br>
+              <strong>Outputs detectados:</strong> {{ script.output_params|join:", "|default:"—" }}
+            </div>
+          </div>
+          {% endif %}
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'scripts:list' %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
       </div>
-      {{ form.prompt_template }}
     </div>
-    {% if form.errors %}<div class="text-red-600">{{ form.errors }}</div>{% endif %}
-    <button class="bg-blue-600 text-white px-4 py-2 rounded">Guardar</button>
-    <a href="{% url 'scripts:list' %}" class="px-4 py-2">Cancelar</a>
-  </form>
-
-  {% if script %}
-  <div class="mt-6 bg-gray-50 p-4 rounded text-sm">
-    <div><strong>Inputs detectados:</strong> {{ script.input_params|join:", "|default:"—" }}</div>
-    <div><strong>Outputs detectados:</strong> {{ script.output_params|join:", "|default:"—" }}</div>
   </div>
-  {% endif %}
 </div>
 {% endblock %}

@@ -1,48 +1,69 @@
 {% extends "base.html" %}
+{% block page_title %}Llamada {{ call.phone_number }}{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'calls:list' %}">Llamadas</a></li>
+<li class="breadcrumb-item active">{{ call.phone_number }}</li>
+{% endblock %}
 {% block content %}
-<div class="p-6 max-w-4xl">
-  <h1 class="text-2xl font-bold mb-2">Llamada {{ call.phone_number }}</h1>
-  <p class="text-sm text-gray-500 mb-4">ID: {{ call.id }} · {{ call.created_at|date:"Y-m-d H:i" }} · {{ call.get_status_display }}</p>
+<div class="row g-3">
 
   {% if audio_url %}
-  <div class="bg-white p-4 rounded shadow mb-4">
-    <h2 class="font-bold mb-2">Audio</h2>
-    <audio controls src="{{ audio_url }}" class="w-full"></audio>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0"><i class="feather-volume-2 me-2"></i>Audio</h6></div>
+      <div class="card-body">
+        <audio controls src="{{ audio_url }}" class="w-100"></audio>
+      </div>
+    </div>
   </div>
   {% endif %}
 
   {% if call.analysis %}
-  <div class="bg-white p-4 rounded shadow mb-4">
-    <h2 class="font-bold mb-2">Datos recolectados</h2>
-    <pre class="bg-gray-50 p-3 rounded text-sm">{{ call.analysis.output_data }}</pre>
-    <div class="mt-3 text-sm"><strong>Score:</strong> {{ call.analysis.compliance_score }}/10</div>
-    <div class="mt-1 text-sm"><strong>Resumen:</strong> {{ call.analysis.summary }}</div>
-    <form method="post" action="{% url 'calls:reanalyze' call.pk %}" class="mt-3">
-      {% csrf_token %}
-      <button type="submit" class="text-sm text-blue-600 hover:underline">Re-analizar</button>
-    </form>
+  <div class="col-xl-5">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="feather-clipboard me-2"></i>Datos recolectados</h6>
+        <span class="badge bg-primary fs-6">{{ call.analysis.compliance_score }}/10</span>
+      </div>
+      <div class="card-body">
+        <pre class="bg-light p-3 rounded small">{{ call.analysis.output_data }}</pre>
+        <p class="text-muted small mt-2 mb-3">{{ call.analysis.summary }}</p>
+        <form method="post" action="{% url 'calls:reanalyze' call.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="feather-refresh-cw me-1"></i>Re-analizar</button>
+        </form>
+      </div>
+    </div>
   </div>
   {% endif %}
 
-  <div class="bg-white p-4 rounded shadow">
-    <h2 class="font-bold mb-2">Transcript</h2>
-    <div class="space-y-2 text-sm">
-      {% for turn in call.transcript %}
-        <div class="{% if turn.role == 'bot' %}text-blue-700{% else %}text-gray-800{% endif %}">
-          <span class="font-bold uppercase text-xs">{{ turn.role }}</span>
-          {% if turn.timestamp is not None %}
-          <span class="text-xs text-gray-400 ml-1">{{ turn.timestamp }}s</span>
-          {% endif %}
-          <div class="ml-2">{{ turn.text }}</div>
+  <div class="col{% if call.analysis %}-xl-7{% endif %}">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0"><i class="feather-message-circle me-2"></i>Transcript</h6></div>
+      <div class="card-body" style="max-height:500px;overflow-y:auto;">
+        {% for turn in call.transcript %}
+        <div class="d-flex gap-2 mb-2 {% if turn.role == 'bot' %}flex-row{% else %}flex-row-reverse{% endif %}">
+          <div class="rounded-circle bg-{% if turn.role == 'bot' %}primary{% else %}secondary{% endif %} text-white d-flex align-items-center justify-content-center flex-shrink-0"
+               style="width:32px;height:32px;font-size:11px;">
+            {% if turn.role == 'bot' %}BOT{% else %}CLI{% endif %}
+          </div>
+          <div class="bg-light rounded p-2 small" style="max-width:80%;">
+            {{ turn.text }}
+            {% if turn.timestamp %}<div class="text-muted" style="font-size:10px;">{{ turn.timestamp }}s</div>{% endif %}
+          </div>
         </div>
-      {% empty %}
-        <p class="text-gray-500">Sin transcript.</p>
-      {% endfor %}
+        {% empty %}
+        <p class="text-muted text-center py-3">Sin transcript.</p>
+        {% endfor %}
+      </div>
     </div>
   </div>
 
   {% if call.error_message %}
-  <div class="mt-4 bg-red-50 text-red-700 p-3 rounded text-sm">{{ call.error_message }}</div>
+  <div class="col-12">
+    <div class="alert alert-danger"><i class="feather-alert-triangle me-2"></i>{{ call.error_message }}</div>
+  </div>
   {% endif %}
+
 </div>
 {% endblock %}

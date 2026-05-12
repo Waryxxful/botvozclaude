@@ -1,14 +1,34 @@
 {% extends "base.html" %}
+{% block page_title %}Nuevo lote{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'batch:list' %}">Lotes</a></li>
+<li class="breadcrumb-item active">Nuevo lote</li>
+{% endblock %}
 {% block content %}
-<div class="p-6 max-w-2xl">
-  <h1 class="text-2xl font-bold mb-4">Nuevo lote por CSV</h1>
-  <form method="post" enctype="multipart/form-data" class="space-y-4">
-    {% csrf_token %}
-    <div><label class="block font-medium">Campaña</label>{{ form.campaign }}</div>
-    <div><label class="block font-medium">Archivo CSV</label>{{ form.csv_file }}</div>
-    {% if form.errors %}<div class="text-red-600">{{ form.errors }}</div>{% endif %}
-    <button class="bg-blue-600 text-white px-4 py-2 rounded">Encolar lote</button>
-  </form>
-  <p class="mt-4 text-sm text-gray-500">El CSV debe incluir las columnas <code>phone_number</code> más los parámetros del script.</p>
+<div class="row">
+  <div class="col-xl-6">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Nuevo lote por CSV</h6></div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" class="row g-3">
+          {% csrf_token %}
+          <div class="col-12">
+            <label class="form-label fw-semibold">Campaña</label>
+            {{ form.campaign }}
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Archivo CSV</label>
+            {{ form.csv_file }}
+            <div class="form-text">Debe incluir columnas: <code>phone_number</code> + los parámetros <code>&#123;&#123;param&#125;&#125;</code> del script.</div>
+          </div>
+          {% if form.errors %}<div class="col-12"><div class="alert alert-danger">{{ form.errors }}</div></div>{% endif %}
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary"><i class="feather-upload me-1"></i>Encolar lote</button>
+            <a href="{% url 'batch:list' %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

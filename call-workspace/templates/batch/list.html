@@ -1,35 +1,50 @@
 {% extends "base.html" %}
+{% block page_title %}Lotes{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Lotes</li>{% endblock %}
 {% block content %}
-<div class="p-6">
-  <div class="flex justify-between mb-4">
-    <h1 class="text-2xl font-bold">Lotes de llamadas</h1>
-    <a href="{% url 'batch:create' %}" class="bg-blue-600 text-white px-4 py-2 rounded">Subir CSV</a>
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Lotes de llamadas</h6>
+        <a href="{% url 'batch:create' %}" class="btn btn-primary btn-sm"><i class="feather-upload me-1"></i>Subir CSV</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr><th>ID</th><th>Campaña</th><th>Origen</th><th>Estado</th><th>Progreso</th><th>Creado</th></tr>
+            </thead>
+            <tbody>
+              {% for j in jobs %}
+              <tr>
+                <td><a href="{% url 'batch:detail' j.pk %}" class="fw-semibold text-primary">#{{ j.id }}</a></td>
+                <td>{{ j.campaign.name }}</td>
+                <td><span class="badge bg-light text-dark">{{ j.get_source_display }}</span></td>
+                <td>
+                  {% if j.status == 'running' %}<span class="badge bg-primary">En curso</span>
+                  {% elif j.status == 'completed' %}<span class="badge bg-success">Completado</span>
+                  {% elif j.status == 'failed' %}<span class="badge bg-danger">Fallido</span>
+                  {% else %}<span class="badge bg-secondary">{{ j.get_status_display }}</span>{% endif %}
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:6px;min-width:80px;">
+                      {% if j.total_calls %}<div class="progress-bar bg-primary" style="width:{% widthratio j.done_calls j.total_calls 100 %}%"></div>{% endif %}
+                    </div>
+                    <small class="text-muted">{{ j.done_calls }}/{{ j.total_calls }}</small>
+                  </div>
+                </td>
+                <td><small>{{ j.created_at|date:"Y-m-d H:i" }}</small></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No hay lotes.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
-  <table class="w-full bg-white shadow rounded text-sm">
-    <thead class="bg-gray-100">
-      <tr>
-        <th class="p-2 text-left">ID</th>
-        <th class="p-2 text-left">Campaña</th>
-        <th class="p-2 text-left">Origen</th>
-        <th class="p-2 text-left">Estado</th>
-        <th class="p-2 text-left">Progreso</th>
-        <th class="p-2 text-left">Creado</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for j in jobs %}
-      <tr class="border-t">
-        <td class="p-2"><a href="{% url 'batch:detail' j.pk %}" class="text-blue-600">#{{ j.id }}</a></td>
-        <td class="p-2">{{ j.campaign.name }}</td>
-        <td class="p-2">{{ j.get_source_display }}</td>
-        <td class="p-2">{{ j.get_status_display }}</td>
-        <td class="p-2">{{ j.done_calls }}/{{ j.total_calls }}</td>
-        <td class="p-2">{{ j.created_at|date:"Y-m-d H:i" }}</td>
-      </tr>
-      {% empty %}
-      <tr><td colspan="6" class="p-6 text-center text-gray-500">No hay lotes.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
 </div>
 {% endblock %}
