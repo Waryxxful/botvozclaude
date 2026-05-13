@@ -1,6 +1,4 @@
-# Framework web
-fastapi==0.115.0
-uvicorn[standard]==0.30.0
+# Pydantic (compartido con Django call-workspace)
 pydantic>=2.10.0
 pydantic-settings>=2.5.0
 

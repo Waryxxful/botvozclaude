@@ -8,35 +8,33 @@
 
 ## Arquitectura general
 
-El proyecto es **dos servidores integrados** que corren en simultáneo:
-
-| Servidor | Puerto | Tecnología | Responsabilidad |
-|---|---|---|---|
-| **Django (Daphne)** | `8001` | Django 6 + Django Channels | Web UI, API REST, WebSocket del bot |
-| **FastAPI** | `8080` | FastAPI + Uvicorn | Webhooks Telnyx, API auxiliar (health, admin) |
+El proyecto corre en **un solo servidor** — Django + Daphne. FastAPI fue eliminado.
 
 ```
-Navegador → localhost:8001 (Django/Daphne)
+Navegador / Telnyx → localhost:8001 (Django + Daphne)
   ├── UI con sidebar (base.html + duralux-admin template)
-  ├── WS /ws/bot-test/  → consumers.py  → GCP (TTS + STT + Gemini)
-  └── REST /api/v1/     → django-ninja  → BD SQLite
-
-Telnyx → localhost:8080 (FastAPI)  [pendiente de probar con URL pública]
-  └── POST /webhooks/telnyx → CallOrchestrator
+  ├── WS /ws/bot-test/        → consumers.py  → GCP (TTS + STT + Gemini)
+  ├── REST /api/v1/           → django-ninja
+  │     ├── /campaigns/       Campañas CRUD
+  │     ├── /batch/           Lotes de llamadas
+  │     ├── /calls/           Historial y análisis
+  │     ├── /webhooks/telnyx  Webhook Telnyx (sin auth)
+  │     ├── /calls/initiate   Llamadas salientes
+  │     ├── /admin/sessions   Sesiones activas
+  │     ├── /admin/metrics    Métricas
+  │     ├── /health           Health check (sin auth)
+  │     └── /health/readiness Readiness check (sin auth)
+  └── BD SQLite (dev) / SQL Server (prod)
 ```
 
 ---
 
-## Cómo levantar los servidores
+## Cómo levantar el servidor
 
 ```bash
-# ── Django (Daphne) ────────────────────────────────────────────────────────
+# ── Un solo comando ────────────────────────────────────────────────────────
 cd BOT_VOZ\call-workspace
 py -3.13 -m daphne -b 127.0.0.1 -p 8001 config.asgi:application
-
-# ── FastAPI ────────────────────────────────────────────────────────────────
-cd BOT_VOZ
-uvicorn src.api.app:create_app --factory --host 0.0.0.0 --port 8080 --reload
 ```
 
 ### Login
