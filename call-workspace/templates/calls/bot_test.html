@@ -144,12 +144,22 @@ let ws = null, audioCtx = null, workletNode = null, mediaStream = null;
 let inCall = false, listening = false, speaking = false;
 let speechMs = 0, silenceMs = 0;
 
+// ── Grabación de la llamada ───────────────────────────────────────────────
+let recordingDest = null;    // MediaStreamDestination (mezcla mic + TTS)
+let mediaRecorder = null;
+let recordingChunks = [];
+let callStartTime = null;
+let callTranscript = [];     // [{role, text}, ...]
+
 function setStatus(text, cls) {
   chip2El.textContent = text;
   chip2El.className = 'badge bg-' + (cls || 'secondary');
 }
 
 function addMsg(role, text) {
+  // Guardar en transcript
+  callTranscript.push({ role, text });
+
   const wrap = document.createElement('div');
   wrap.className = 'bubble';
   const isBot = role === 'bot';
@@ -219,6 +229,8 @@ async function ensureAudio() {
   if (audioCtx) return;
   audioCtx = new AudioContext({ sampleRate: 48000 });
   await audioCtx.audioWorklet.addModule(makeProcessorURL());
+  // Destino para mezclar mic + TTS y grabar todo
+  recordingDest = audioCtx.createMediaStreamDestination();
 }
 
 // ── VAD recording ─────────────────────────────────────────────────────────
@@ -245,6 +257,8 @@ async function startListening() {
     workletNode = new AudioWorkletNode(audioCtx, 'pcm-recorder');
     workletNode.port.onmessage = onWorkletMessage;
     src.connect(workletNode); workletNode.connect(audioCtx.destination);
+    // También conectar mic al destino de grabación
+    if (recordingDest) src.connect(recordingDest);
   }
   speechMs = 0; silenceMs = 0; listening = true;
   workletNode.port.postMessage('start');
@@ -266,13 +280,71 @@ async function playWav(b64) {
   const src = audioCtx.createBufferSource();
   src.buffer = decoded;
   src.connect(audioCtx.destination);
+  // También conectar audio del bot al destino de grabación
+  if (recordingDest) src.connect(recordingDest);
   src.start();
   await new Promise(r => { src.onended = r; });
   speaking = false;
   if (inCall) startListening();
 }
 
+// ── Grabación ────────────────────────────────────────────────────────────
+function startRecording() {
+  if (!recordingDest) return;
+  recordingChunks = [];
+  callTranscript = [];
+  callStartTime = Date.now();
+
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : 'audio/webm';
+
+  mediaRecorder = new MediaRecorder(recordingDest.stream, { mimeType });
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordingChunks.push(e.data); };
+  mediaRecorder.start(1000); // chunk cada 1s
+}
+
+async function stopAndUploadRecording(sessionId) {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+
+  await new Promise(resolve => {
+    mediaRecorder.onstop = resolve;
+    mediaRecorder.stop();
+  });
+
+  if (recordingChunks.length === 0) return;
+
+  const duration = (Date.now() - callStartTime) / 1000;
+  const blob = new Blob(recordingChunks, { type: 'audio/webm' });
+
+  const form = new FormData();
+  form.append('session_id', sessionId);
+  form.append('audio', blob, `${sessionId}.webm`);
+  form.append('transcript', JSON.stringify(callTranscript));
+  form.append('script_name', SCRIPT_NAME || '');
+  form.append('duration_seconds', String(duration.toFixed(1)));
+
+  try {
+    const resp = await fetch('/api/v1/conversations/upload', { method: 'POST', body: form });
+    if (resp.ok) {
+      const data = await resp.json();
+      addDivider(`Grabación guardada (${Math.round(duration)}s)`);
+      // Mostrar link para ir a las grabaciones
+      const link = document.createElement('div');
+      link.className = 'text-center mt-2';
+      link.innerHTML = `<a href="/conversations/" class="btn btn-sm btn-outline-primary">
+        <i class="feather-mic me-1"></i>Ver grabación</a>`;
+      msgsEl.appendChild(link);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+  } catch (err) {
+    console.error('Error subiendo grabación:', err);
+  }
+}
+
 // ── WebSocket ─────────────────────────────────────────────────────────────
+let currentSessionId = null;
+
 async function startCall() {
   if (inCall) return;
   inCall = true;
@@ -280,6 +352,7 @@ async function startCall() {
   callBtn.textContent = '📵';
   hintEl.textContent = 'Finalizar llamada';
   msgsEl.innerHTML = '';
+  callTranscript = [];
   setStatus('Conectando…', 'warning');
 
   await ensureAudio();
@@ -310,6 +383,11 @@ async function startCall() {
     try { d = JSON.parse(ev.data); } catch { return; }
     switch (d.type) {
       case 'greeting':
+        // Arrancar grabación cuando llega el primer saludo
+        if (!currentSessionId) {
+          currentSessionId = d.session_id || crypto.randomUUID();
+          startRecording();
+        }
         addMsg('bot', d.text);
         await playWav(d.audio);
         break;
@@ -351,10 +429,17 @@ function endCall() {
   callBtn.classList.add('start'); callBtn.classList.remove('end', 'listening');
   callBtn.textContent = '📞';
   hintEl.textContent = 'Iniciar llamada';
-  setStatus('Sin conectar', 'secondary');
+  setStatus('Guardando grabación…', 'info');
   if (ws) { ws.close(); ws = null; }
   stopListening(false);
   addDivider('Fin de la llamada');
+
+  // Subir grabación al servidor
+  const sid = currentSessionId;
+  currentSessionId = null;
+  stopAndUploadRecording(sid).then(() => {
+    setStatus('Sin conectar', 'secondary');
+  });
 }
 
 callBtn.addEventListener('click', () => { if (inCall) endCall(); else startCall(); });

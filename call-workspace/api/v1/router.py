@@ -8,6 +8,7 @@ from .processing import router as processing_router
 from .webhook import router as webhook_router
 from .telephony import router as telephony_router
 from .health import router as health_router
+from .conversations import router as conversations_router
 
 api = NinjaAPI(
     auth=django_auth,
@@ -34,3 +35,6 @@ api.add_router("/", telephony_router, tags=["Telephony"])
 
 # Health (sin auth)
 api.add_router("/", health_router, tags=["Health"])
+
+# Grabaciones (sin auth para recibir desde browser)
+api.add_router("/", conversations_router, tags=["Conversations"])

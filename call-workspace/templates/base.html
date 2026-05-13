@@ -118,6 +118,14 @@
           </a>
         </li>
 
+        <!-- Grabaciones -->
+        <li class="nxl-item {% if '/conversations/' in request.path %}nxl-active{% endif %}">
+          <a href="{% url 'conversations:list' %}" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-headphones"></i></span>
+            <span class="nxl-mtext">Grabaciones</span>
+          </a>
+        </li>
+
         <!-- Documentación -->
         <li class="nxl-item {% if '/docs/' in request.path %}nxl-active{% endif %}">
           <a href="{% url 'docs:developers' %}" class="nxl-link">

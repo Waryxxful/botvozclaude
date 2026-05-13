@@ -178,6 +178,7 @@ class BotTestConsumer(AsyncWebsocketConsumer):
                 "type": "greeting",
                 "text": self.profile.greeting,
                 "audio": wav_b64,
+                "session_id": self.session_id,
             }))
         except Exception as exc:
             await self.send(text_data=json.dumps({"type": "error", "message": f"TTS saludo: {exc}"}))
