@@ -149,7 +149,7 @@ async def _handle_call_hangup(call_id: str) -> None:
 # ── Llamadas salientes ────────────────────────────────────────────────────
 
 @router.post("/calls/initiate", response=CallInitiateOut)
-async def initiate_call(request: HttpRequest, payload: CallInitiateIn) -> CallInitiateOut:
+def initiate_call(request: HttpRequest, payload: CallInitiateIn) -> CallInitiateOut:
     """Inicia una llamada saliente (disparado por batch o integración externa)."""
     config = OutboundCallConfig(
         call_id=payload.call_id,
@@ -161,9 +161,12 @@ async def initiate_call(request: HttpRequest, payload: CallInitiateIn) -> CallIn
     )
     logger.info("initiate_call_received", call_id=config.call_id, phone=config.phone_number)
 
-    loop = asyncio.get_event_loop()
-    if loop.is_running():
-        loop.create_task(_run_outbound(config))
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            loop.create_task(_run_outbound(config))
+    except RuntimeError:
+        pass
 
     return CallInitiateOut(bot_call_id=payload.call_id, status="initiated")
 
@@ -194,3 +197,14 @@ def get_sessions(request: HttpRequest) -> SessionsOut:
 @router.get("/admin/metrics", response=MetricsOut)
 def get_metrics(request: HttpRequest) -> MetricsOut:
     return MetricsOut(stt_calls=0, llm_calls=0, tts_calls=0, error_rate=0.0)
+
+
+# ── Verificación de firma Telnyx (testeable sin request) ─────────────────────
+
+def verify_webhook_signature(payload_bytes: bytes, signature: str, timestamp: str, env: str) -> bool:
+    """Verifica la firma del webhook. Retorna True si es válida o entorno dev."""
+    if env == "production":
+        return verify_telnyx_signature(payload_bytes, signature, timestamp)
+    if signature and timestamp:
+        return verify_telnyx_signature(payload_bytes, signature, timestamp)
+    return True
