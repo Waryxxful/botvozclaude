@@ -13,6 +13,7 @@ DEBUG = env("DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = env("ALLOWED_HOSTS", "localhost").split(",")
 
 DJANGO_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -23,6 +24,7 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     "ninja",
+    "channels",
 ]
 
 LOCAL_APPS = [
@@ -69,16 +71,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "mssql",
-        "NAME": os.getenv("MSSQL_DB", "callworkspace"),
-        "USER": os.getenv("MSSQL_USER", "sa"),
-        "PASSWORD": os.getenv("MSSQL_PASSWORD", ""),
-        "HOST": os.getenv("MSSQL_HOST", "localhost"),
-        "PORT": os.getenv("MSSQL_PORT", "1433"),
-        "OPTIONS": {
-            "driver": os.getenv("MSSQL_DRIVER", "ODBC Driver 18 for SQL Server"),
-            "extra_params": "TrustServerCertificate=yes;",
-        },
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "test.sqlite3",
     }
 }
 
@@ -103,6 +97,9 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+ASGI_APPLICATION = "config.asgi.application"
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
 
 AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "/accounts/login/"
