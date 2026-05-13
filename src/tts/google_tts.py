@@ -26,11 +26,13 @@ class GoogleTTS(BaseTTS):
         text: str,
         language: str | None = None,
         voice: str | None = None,
+        speed: float = 1.0,
+        pitch: float = 0.0,
     ) -> bytes:
         lang = language or self._default_language
         voice_name = voice or self._default_voice
 
-        cache_key = hashlib.md5(f"{voice_name}:{lang}:{text}".encode()).hexdigest()
+        cache_key = hashlib.md5(f"{voice_name}:{lang}:{speed}:{pitch}:{text}".encode()).hexdigest()
         if cache_key in _cache:
             logger.debug("tts_cache_hit", text_length=len(text))
             return _cache[cache_key]
@@ -43,8 +45,8 @@ class GoogleTTS(BaseTTS):
         audio_config = tts.AudioConfig(
             audio_encoding=tts.AudioEncoding.LINEAR16,
             sample_rate_hertz=24000,
-            speaking_rate=1.0,
-            pitch=0.0,
+            speaking_rate=speed,
+            pitch=pitch,
         )
 
         try:
