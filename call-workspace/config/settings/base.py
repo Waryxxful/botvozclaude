@@ -34,6 +34,7 @@ LOCAL_APPS = [
     "apps.processing",
     "apps.scripts",
     "apps.batch",
+    "apps.docs",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

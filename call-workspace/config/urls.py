@@ -14,5 +14,6 @@ urlpatterns = [
     path("campaigns/", include("apps.campaigns.urls")),
     path("scripts/", include("apps.scripts.urls")),
     path("batch/", include("apps.batch.urls")),
+    path("docs/", include("apps.docs.urls")),
     path("media/<path:path>", serve, {"document_root": settings.MEDIA_ROOT}),
 ]

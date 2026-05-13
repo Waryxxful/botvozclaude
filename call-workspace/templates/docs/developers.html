@@ -1,0 +1,631 @@
+{% extends "base.html" %}
+{% block page_title %}Documentación para Desarrolladores{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Developers</li>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+
+  <!-- Sidebar de pestañas -->
+  <div class="col-lg-3">
+    <div class="card sticky-top" style="top: 80px;">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="feather-code me-2"></i>Secciones</h6>
+      </div>
+      <div class="list-group list-group-flush" id="docTabs" role="tablist">
+        <a class="list-group-item list-group-item-action active d-flex align-items-center gap-2"
+           data-bs-toggle="list" href="#tab-auth" role="tab">
+          <i class="feather-lock" style="font-size:0.85rem;"></i> Autenticación
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+           data-bs-toggle="list" href="#tab-campaigns" role="tab">
+          <i class="feather-target" style="font-size:0.85rem;"></i> Campañas
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+           data-bs-toggle="list" href="#tab-batch" role="tab">
+          <i class="feather-layers" style="font-size:0.85rem;"></i> Lotes (Batch)
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+           data-bs-toggle="list" href="#tab-single" role="tab">
+          <i class="feather-phone-outgoing" style="font-size:0.85rem;"></i> Llamada individual
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+           data-bs-toggle="list" href="#tab-calls" role="tab">
+          <i class="feather-list" style="font-size:0.85rem;"></i> Consultar llamadas
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+           data-bs-toggle="list" href="#tab-scripts" role="tab">
+          <i class="feather-file-text" style="font-size:0.85rem;"></i> Scripts
+        </a>
+        <a class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+           data-bs-toggle="list" href="#tab-reference" role="tab">
+          <i class="feather-book-open" style="font-size:0.85rem;"></i> Referencia rápida
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenido de las pestañas -->
+  <div class="col-lg-9">
+    <div class="tab-content">
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TAB: Autenticación
+      ═══════════════════════════════════════════════════════════ -->
+      <div class="tab-pane fade show active" id="tab-auth" role="tabpanel">
+        <div class="card">
+          <div class="card-header"><h6 class="mb-0"><i class="feather-lock me-2"></i>Autenticación</h6></div>
+          <div class="card-body">
+            <p>Todos los endpoints usan <strong>autenticación por sesión Django</strong>. Debes hacer login primero y conservar la cookie <code>sessionid</code> en todas las peticiones.</p>
+
+            <h6 class="mt-4 mb-2 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Paso 1 — Obtener CSRF token y hacer login</h6>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">import requests
+
+BASE_URL = "http://localhost:8001"
+session = requests.Session()
+
+# Obtener CSRF token
+csrf_response = session.get(f"{BASE_URL}/accounts/login/")
+csrf_token = csrf_response.cookies["csrftoken"]
+
+# Hacer login
+login = session.post(
+    f"{BASE_URL}/accounts/login/",
+    data={
+        "username": "tu_usuario",
+        "password": "tu_contraseña",
+        "csrfmiddlewaretoken": csrf_token,
+    },
+)
+print("Login OK:", login.ok)  # True si fue exitoso</pre>
+
+            <h6 class="mt-4 mb-2 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Paso 2 — Usar la sesión en todas las peticiones</h6>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;"># El objeto `session` conserva las cookies automáticamente.
+# Siempre pasa el header X-CSRFToken en POST/PUT/DELETE:
+
+headers = {"X-CSRFToken": session.cookies.get("csrftoken", "")}
+
+response = session.post(url, json=payload, headers=headers)
+print(response.json())</pre>
+
+            <div class="alert alert-info mt-4">
+              <i class="feather-info me-2"></i>
+              <strong>Swagger interactivo:</strong> Disponible en
+              <a href="/api/v1/docs" target="_blank"><strong>http://localhost:8001/api/v1/docs</strong></a> — permite probar todos los endpoints directamente desde el navegador.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TAB: Campañas
+      ═══════════════════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-campaigns" role="tabpanel">
+        <div class="card">
+          <div class="card-header"><h6 class="mb-0"><i class="feather-target me-2"></i>Campañas</h6></div>
+          <div class="card-body">
+
+            <!-- GET /campaigns/ -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-success">GET</span>
+                <code>/api/v1/campaigns/</code>
+                <span class="text-muted small">— Listar campañas</span>
+              </div>
+              <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">response = session.get(f"{BASE_URL}/api/v1/campaigns/")
+campaigns = response.json()
+
+for c in campaigns:
+    print(c["id"], c["name"], "activa:", c["is_active"])</pre>
+              <div class="small text-muted mt-1">Respuesta: <code>[{"id": 1, "name": "Confirmaciones Mayo", "is_active": true, "created_at": "..."}]</code></div>
+            </div>
+
+            <hr>
+
+            <!-- POST /campaigns/ -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-primary">POST</span>
+                <code>/api/v1/campaigns/</code>
+                <span class="text-muted small">— Crear campaña</span>
+              </div>
+              <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">headers = {"X-CSRFToken": session.cookies.get("csrftoken", "")}
+
+response = session.post(
+    f"{BASE_URL}/api/v1/campaigns/",
+    json={
+        "name": "Confirmaciones Mayo",
+        "description": "Campaña de confirmaciones de citas - Mayo 2026",
+        "is_active": True,
+    },
+    headers=headers,
+)
+campaign = response.json()
+print("Campaña creada con ID:", campaign["id"])</pre>
+            </div>
+
+            <hr>
+
+            <!-- PUT /campaigns/{id}/ -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-warning text-dark">PUT</span>
+                <code>/api/v1/campaigns/{"{campaign_id}"}/ </code>
+                <span class="text-muted small">— Actualizar campaña</span>
+              </div>
+              <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">response = session.put(
+    f"{BASE_URL}/api/v1/campaigns/1/",
+    json={"is_active": False},   # Solo envía los campos que quieres cambiar
+    headers={"X-CSRFToken": session.cookies.get("csrftoken", "")},
+)
+print(response.json())</pre>
+            </div>
+
+            <div class="alert alert-warning">
+              <i class="feather-alert-circle me-2"></i>
+              <strong>Importante:</strong> Para lanzar llamadas, la campaña debe tener un <strong>script asignado</strong> y estar activa. Asigna el script desde la UI en <a href="/campaigns/">/campaigns/</a>.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TAB: Lotes (Batch)
+      ═══════════════════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-batch" role="tabpanel">
+        <div class="card">
+          <div class="card-header"><h6 class="mb-0"><i class="feather-layers me-2"></i>Lotes — Múltiples llamadas</h6></div>
+          <div class="card-body">
+            <p>Envía un arreglo de llamadas en un solo request. Todas quedan en cola y se procesan de forma asíncrona.</p>
+
+            <!-- POST /batch -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-primary">POST</span>
+                <code>/api/v1/batch/</code>
+                <span class="text-muted small">— Crear lote de llamadas</span>
+              </div>
+              <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">headers = {"X-CSRFToken": session.cookies.get("csrftoken", "")}
+
+payload = {
+    "campaign_id": 1,    # ID de la campaña (debe tener script y estar activa)
+    "calls": [
+        {
+            "phone_number": "+56912345678",
+            "input_params": {
+                "nombre": "Juan García",
+                "consecionario": "Chery Norte",
+                "fecha_agenda": "15/05/2026"
+            }
+        },
+        {
+            "phone_number": "+56987654321",
+            "input_params": {
+                "nombre": "María López",
+                "consecionario": "Chery Sur",
+                "fecha_agenda": "16/05/2026"
+            }
+        },
+    ]
+}
+
+response = session.post(f"{BASE_URL}/api/v1/batch/", json=payload, headers=headers)
+result = response.json()
+print(result)
+# {"batch_job_id": 3, "total_calls": 2, "status": "pending"}</pre>
+            </div>
+
+            <hr>
+
+            <!-- Desde CSV -->
+            <h6 class="mt-3 mb-2 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Crear lote desde archivo CSV</h6>
+            <p class="small text-muted">El CSV debe tener columna <code>phone_number</code> y una columna por cada variable del script.</p>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;"># Formato del CSV:
+# phone_number,nombre,consecionario,fecha_agenda
+# +56912345678,Juan García,Chery Norte,15/05/2026
+# +56987654321,María López,Chery Sur,16/05/2026
+
+import pandas as pd
+
+df = pd.DataFrame([
+    {
+        "phone_number": "+56912345678",
+        "nombre": "Juan García",
+        "consecionario": "Chery Norte",
+        "fecha_agenda": "15/05/2026"
+    },
+    {
+        "phone_number": "+56987654321",
+        "nombre": "María López",
+        "consecionario": "Chery Sur",
+        "fecha_agenda": "16/05/2026"
+    }
+])
+
+# Convertir a formato de la API
+calls = []
+for _, row in df.iterrows():
+    phone = row.pop("phone_number")
+    calls.append({"phone_number": phone, "input_params": row.to_dict()})
+
+response = session.post(
+    f"{BASE_URL}/api/v1/batch/",
+    json={"campaign_id": 1, "calls": calls},
+    headers={"X-CSRFToken": session.cookies.get("csrftoken", "")},
+)
+print(response.json())</pre>
+
+            <hr>
+
+            <!-- Monitorear progreso -->
+            <h6 class="mt-3 mb-2 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Monitorear progreso del lote</h6>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">import time
+
+batch_job_id = result["batch_job_id"]
+
+while True:
+    status = session.get(f"{BASE_URL}/api/v1/batch/{batch_job_id}/").json()
+    total  = status["total_calls"]
+    done   = status["done_calls"]
+    failed = status["failed_calls"]
+
+    print(f"Progreso: {done + failed}/{total} — {status['status']}")
+
+    if status["status"] in ("completed", "failed"):
+        break
+
+    time.sleep(5)</pre>
+
+            <div class="mt-3">
+              <strong>Respuestas de error:</strong>
+              <ul class="small mt-1">
+                <li><code>400</code> — Campaña sin script asignado</li>
+                <li><code>400</code> — Faltan <code>input_params</code> requeridos por el script</li>
+                <li><code>404</code> — <code>campaign_id</code> no existe o está inactiva</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TAB: Llamada individual
+      ═══════════════════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-single" role="tabpanel">
+        <div class="card">
+          <div class="card-header"><h6 class="mb-0"><i class="feather-phone-outgoing me-2"></i>Llamada individual</h6></div>
+          <div class="card-body">
+            <p>Para lanzar una sola llamada usa el endpoint de batch con un arreglo de un elemento.</p>
+
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">headers = {"X-CSRFToken": session.cookies.get("csrftoken", "")}
+
+response = session.post(
+    f"{BASE_URL}/api/v1/batch/",
+    json={
+        "campaign_id": 1,
+        "calls": [
+            {
+                "phone_number": "+56912345678",
+                "input_params": {
+                    "nombre": "Pedro Soto",
+                    "consecionario": "Chery Norte",
+                    "fecha_agenda": "20/05/2026"
+                }
+            }
+        ]
+    },
+    headers=headers,
+)
+result = response.json()
+print("Batch ID:", result["batch_job_id"])
+
+# Esperar resultado
+import time
+while True:
+    job = session.get(f"{BASE_URL}/api/v1/batch/{result['batch_job_id']}/").json()
+    if job["status"] in ("completed", "failed"):
+        break
+    time.sleep(3)
+
+# Ver el resultado de la llamada
+calls = session.get(
+    f"{BASE_URL}/api/v1/calls/",
+    params={"campaign_id": 1, "status": "done"}
+).json()
+
+for call in calls:
+    analysis = session.get(f"{BASE_URL}/api/v1/calls/{call['id']}/analysis/").json()
+    print(f"{call['phone_number']} → {analysis['output_data']}")
+    # output_data: {"confirmacion": "asistira"}</pre>
+
+            <div class="alert alert-info mt-3">
+              <i class="feather-info me-2"></i>
+              Los resultados (<code>[[output_params]]</code> del script) quedan disponibles en <code>analysis.output_data</code> una vez que la llamada está en estado <code>done</code>.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TAB: Consultar llamadas
+      ═══════════════════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-calls" role="tabpanel">
+        <div class="card">
+          <div class="card-header"><h6 class="mb-0"><i class="feather-list me-2"></i>Consultar llamadas y análisis</h6></div>
+          <div class="card-body">
+
+            <!-- GET /calls/ -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-success">GET</span>
+                <code>/api/v1/calls/</code>
+                <span class="text-muted small">— Listar llamadas</span>
+              </div>
+              <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;"># Sin filtros
+calls = session.get(f"{BASE_URL}/api/v1/calls/").json()
+
+# Filtrar por campaña
+calls = session.get(
+    f"{BASE_URL}/api/v1/calls/",
+    params={"campaign_id": 1}
+).json()
+
+# Filtrar por estado: pending | calling | done | failed
+calls = session.get(
+    f"{BASE_URL}/api/v1/calls/",
+    params={"status": "done"}
+).json()
+
+for call in calls:
+    print(call["id"], call["phone_number"], call["status"])</pre>
+            </div>
+
+            <hr>
+
+            <!-- GET /calls/{id}/ -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-success">GET</span>
+                <code>/api/v1/calls/{"{call_id}"}/ </code>
+                <span class="text-muted small">— Detalle de llamada</span>
+              </div>
+              <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">call_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"  # UUID
+call = session.get(f"{BASE_URL}/api/v1/calls/{call_id}/").json()
+
+print(call["status"])           # done
+print(call["duration_seconds"]) # 45
+print(call["audio_gcs_url"])    # gs://bucket/audio.wav</pre>
+            </div>
+
+            <hr>
+
+            <!-- GET /calls/{id}/analysis/ -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="badge bg-success">GET</span>
+                <code>/api/v1/calls/{"{call_id}"}/analysis/ </code>
+                <span class="text-muted small">— Análisis LLM de la llamada</span>
+              </div>
+              <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">analysis = session.get(
+    f"{BASE_URL}/api/v1/calls/{call_id}/analysis/"
+).json()
+
+print(analysis["output_data"])      # {"confirmacion": "asistira"}
+print(analysis["summary"])          # "El cliente confirmó asistencia..."
+print(analysis["compliance_score"]) # 85</pre>
+            </div>
+
+            <hr>
+
+            <!-- Exportar resultados de campaña -->
+            <h6 class="mt-3 mb-2 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Exportar todos los resultados de una campaña</h6>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">import pandas as pd
+
+calls = session.get(
+    f"{BASE_URL}/api/v1/calls/",
+    params={"campaign_id": 1, "status": "done"}
+).json()
+
+rows = []
+for call in calls:
+    analysis_resp = session.get(f"{BASE_URL}/api/v1/calls/{call['id']}/analysis/")
+    if analysis_resp.status_code == 200:
+        analysis = analysis_resp.json()
+        rows.append({
+            "phone_number": call["phone_number"],
+            "status": call["status"],
+            **analysis["output_data"],   # expande confirmacion, etc.
+            "summary": analysis["summary"],
+            "score": analysis["compliance_score"],
+        })
+
+df = pd.DataFrame(rows)
+df.to_csv("resultados_campana.csv", index=False)
+print(df)</pre>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TAB: Scripts
+      ═══════════════════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-scripts" role="tabpanel">
+        <div class="card">
+          <div class="card-header"><h6 class="mb-0"><i class="feather-file-text me-2"></i>Scripts — Sintaxis y variables</h6></div>
+          <div class="card-body">
+            <p>Los scripts definen el comportamiento del bot. Tienen 3 tipos de marcadores:</p>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <div class="card border-primary h-100">
+                  <div class="card-body">
+                    <h6><code class="text-primary">&#123;&#123;variable&#125;&#125;</code></h6>
+                    <p class="small text-muted mb-0">Variable de <strong>entrada</strong>. Se reemplaza antes de la llamada con los datos del batch (<code>input_params</code>). También puede ir en el saludo.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card border-info h-100">
+                  <div class="card-body">
+                    <h6><code class="text-info">[[variable]]</code></h6>
+                    <p class="small text-muted mb-0">Variable de <strong>salida</strong>. El bot la captura durante la conversación. Queda disponible en <code>analysis.output_data</code>.</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="card border-secondary h-100">
+                  <div class="card-body">
+                    <h6><code class="text-secondary">## comentario ##</code></h6>
+                    <p class="small text-muted mb-0">Nota interna solo visible al crear el script. El bot no la lee ni la dice.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h6 class="mt-4 mb-2 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Ejemplo de script completo</h6>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">Saludo:
+  Hola {{nombre}}, te llamamos desde {{consecionario}}.
+
+Prompt:
+  Contacta a {{nombre}} para confirmar su cita del {{fecha_agenda}}
+  en {{consecionario}}. Pregunta si asistirá.
+
+  ## Opciones válidas: asistira, re-agenda, cancela ##
+
+  Registra la respuesta en:
+  [[confirmacion]]</pre>
+
+            <h6 class="mt-4 mb-2 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Relación script → batch → resultado</h6>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;"># El script detecta automáticamente:
+# input_params  = ["nombre", "consecionario", "fecha_agenda"]
+# output_params = ["confirmacion"]
+
+# En el batch debes proveer TODOS los input_params:
+"input_params": {
+    "nombre": "Juan García",          # reemplaza {{nombre}}
+    "consecionario": "Chery Norte",   # reemplaza {{consecionario}}
+    "fecha_agenda": "15/05/2026"      # reemplaza {{fecha_agenda}}
+}
+
+# Después de la llamada, el resultado queda en:
+analysis["output_data"] == {"confirmacion": "asistira"}</pre>
+
+            <div class="alert alert-warning mt-3">
+              <i class="feather-alert-circle me-2"></i>
+              Si envías un batch sin todos los <code>input_params</code> que requiere el script, la API retorna <code>400: Missing input params</code>.
+            </div>
+
+            <h6 class="mt-4 mb-2 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Obtener variables requeridas de un script por código</h6>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">script = session.get(f"{BASE_URL}/scripts/api/1/json/").json()
+
+print("Inputs requeridos:", script["input_params"])
+# ["nombre", "consecionario", "fecha_agenda"]
+
+print("Outputs capturados:", script["output_params"])
+# ["confirmacion"]</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TAB: Referencia rápida
+      ═══════════════════════════════════════════════════════════ -->
+      <div class="tab-pane fade" id="tab-reference" role="tabpanel">
+        <div class="card">
+          <div class="card-header"><h6 class="mb-0"><i class="feather-book-open me-2"></i>Referencia rápida</h6></div>
+          <div class="card-body">
+
+            <h6 class="mb-3 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Todos los endpoints</h6>
+            <div class="table-responsive">
+              <table class="table table-hover table-sm mb-4">
+                <thead class="table-light">
+                  <tr><th>Método</th><th>URL</th><th>Descripción</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><span class="badge bg-success">GET</span></td><td><code>/api/v1/campaigns/</code></td><td>Listar campañas</td></tr>
+                  <tr><td><span class="badge bg-primary">POST</span></td><td><code>/api/v1/campaigns/</code></td><td>Crear campaña</td></tr>
+                  <tr><td><span class="badge bg-warning text-dark">PUT</span></td><td><code>/api/v1/campaigns/{"{id}"}/ </code></td><td>Actualizar campaña</td></tr>
+                  <tr><td><span class="badge bg-primary">POST</span></td><td><code>/api/v1/batch/</code></td><td>Crear lote de llamadas</td></tr>
+                  <tr><td><span class="badge bg-success">GET</span></td><td><code>/api/v1/calls/</code></td><td>Listar llamadas (filtros: campaign_id, status)</td></tr>
+                  <tr><td><span class="badge bg-success">GET</span></td><td><code>/api/v1/calls/{"{uuid}"}/ </code></td><td>Detalle de una llamada</td></tr>
+                  <tr><td><span class="badge bg-success">GET</span></td><td><code>/api/v1/calls/{"{uuid}"}/analysis/ </code></td><td>Análisis LLM de la llamada</td></tr>
+                  <tr><td><span class="badge bg-success">GET</span></td><td><code>/scripts/api/{"{id}"}/json/ </code></td><td>Datos del script (input/output params)</td></tr>
+                  <tr><td><span class="badge bg-success">GET</span></td><td><code>/api/v1/docs</code></td><td>Swagger interactivo</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h6 class="mt-4 mb-3 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Estados de llamada</h6>
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              <span class="badge bg-secondary">pending</span> En cola
+              <span class="badge bg-warning text-dark">calling</span> En progreso
+              <span class="badge bg-success">done</span> Completada
+              <span class="badge bg-danger">failed</span> Falló
+            </div>
+
+            <h6 class="mt-4 mb-3 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Snippet de sesión reutilizable</h6>
+            <pre class="bg-light p-3 rounded border" style="font-size:0.85rem;">import requests
+
+class VoiceBotClient:
+    def __init__(self, base_url, username, password):
+        self.base = base_url
+        self.session = requests.Session()
+        self._login(username, password)
+
+    def _login(self, username, password):
+        r = self.session.get(f"{self.base}/accounts/login/")
+        self.session.post(
+            f"{self.base}/accounts/login/",
+            data={
+                "username": username,
+                "password": password,
+                "csrfmiddlewaretoken": r.cookies["csrftoken"],
+            },
+        )
+
+    def _headers(self):
+        return {"X-CSRFToken": self.session.cookies.get("csrftoken", "")}
+
+    def create_batch(self, campaign_id, calls):
+        return self.session.post(
+            f"{self.base}/api/v1/batch/",
+            json={"campaign_id": campaign_id, "calls": calls},
+            headers=self._headers(),
+        ).json()
+
+    def get_results(self, campaign_id):
+        calls = self.session.get(
+            f"{self.base}/api/v1/calls/",
+            params={"campaign_id": campaign_id, "status": "done"},
+        ).json()
+        results = []
+        for call in calls:
+            r = self.session.get(f"{self.base}/api/v1/calls/{call['id']}/analysis/")
+            if r.status_code == 200:
+                results.append({**call, "analysis": r.json()})
+        return results
+
+
+# Uso:
+client = VoiceBotClient("http://localhost:8001", "admin", "admin123")
+
+batch = client.create_batch(1, [
+    {"phone_number": "+56912345678", "input_params": {"nombre": "Juan", "consecionario": "Chery", "fecha_agenda": "20/05"}},
+])
+print(batch)
+
+results = client.get_results(1)
+for r in results:
+    print(r["phone_number"], r["analysis"]["output_data"])</pre>
+
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-content -->
+  </div>
+
+</div>
+{% endblock %}

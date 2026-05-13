@@ -118,6 +118,14 @@
           </a>
         </li>
 
+        <!-- Documentación -->
+        <li class="nxl-item {% if '/docs/' in request.path %}nxl-active{% endif %}">
+          <a href="{% url 'docs:developers' %}" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-book"></i></span>
+            <span class="nxl-mtext">Developers</span>
+          </a>
+        </li>
+
       </ul>
     </div>
   </div>
