@@ -107,14 +107,22 @@ class GeminiClient:
         self,
         session: SessionState,
         user_text: str,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> AsyncIterator[str]:
-        """Genera respuesta en streaming para reducir latencia de TTS."""
+        """Genera respuesta en streaming. temperature y max_tokens sobreescriben el config por defecto."""
         system_prompt = build_system_prompt(session)
+
+        gen_config = GenerationConfig(
+            temperature=temperature if temperature is not None else self._generation_config.temperature,
+            max_output_tokens=max_tokens if max_tokens is not None else self._generation_config.max_output_tokens,
+            top_p=0.9,
+        )
 
         model = GenerativeModel(
             model_name=self._model_id,
             system_instruction=system_prompt,
-            generation_config=self._generation_config,
+            generation_config=gen_config,
         )
 
         history = [
