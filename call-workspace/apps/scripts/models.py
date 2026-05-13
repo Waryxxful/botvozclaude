@@ -20,7 +20,7 @@ class Script(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        parsed = parse_template(self.prompt_template)
+        parsed = parse_template(self.prompt_template, self.greeting)
         self.input_params = parsed.input_params
         self.output_params = parsed.output_params
         super().save(*args, **kwargs)
