@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block page_title %}Voice Bot{% endblock %} — CRM</title>
+  <title>{% block title %}Voice Bot CRM{% endblock %}</title>
   <link rel="icon" href="{% static 'assets/images/favicon.ico' %}" type="image/x-icon" />
   <link rel="stylesheet" href="{% static 'assets/vendors/css/vendors.min.css' %}" />
   <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}" />
@@ -103,10 +103,18 @@
         <li class="nxl-item nxl-caption"><label>Herramientas</label></li>
 
         <!-- Bot de Prueba -->
-        <li class="nxl-item">
-          <a href="http://localhost:8080/test/" target="_blank" class="nxl-link">
+        <li class="nxl-item {% if '/calls/bot-test/' in request.path %}nxl-active{% endif %}">
+          <a href="{% url 'calls:bot_test' %}" class="nxl-link">
             <span class="nxl-micon"><i class="feather-mic"></i></span>
             <span class="nxl-mtext">Bot de Prueba</span>
+          </a>
+        </li>
+
+        <!-- Configuración del agente -->
+        <li class="nxl-item {% if '/scripts/settings/' in request.path %}nxl-active{% endif %}">
+          <a href="{% url 'scripts:global_config' %}" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-sliders"></i></span>
+            <span class="nxl-mtext">Config. Agente</span>
           </a>
         </li>
 
@@ -121,38 +129,54 @@
 <header class="nxl-header">
   <div class="header-wrapper">
     <div class="header-left d-flex align-items-center gap-4">
-      <a href="javascript:void(0);" class="nxl-head-mobile-toggler" id="mobile-collapse">
-        <div class="hamburger hamburger--arrowturn">
-          <div class="hamburger-box"><div class="hamburger-inner"></div></div>
-        </div>
-      </a>
       <div class="nxl-navigation-toggle">
         <a href="javascript:void(0);" id="menu-mini-button">
-          <i class="feather-align-left"></i>
-        </a>
-        <a href="javascript:void(0);" id="menu-expend-button">
           <i class="feather-align-left"></i>
         </a>
       </div>
     </div>
     <div class="header-right ms-auto d-flex align-items-center gap-3">
       {% if user.is_authenticated %}
-      <div class="dropdown">
-        <a href="#" class="dropdown-toggle d-flex align-items-center gap-2 text-dark text-decoration-none" data-bs-toggle="dropdown">
+      <div class="nxl-h-item nxl-head-link-list" style="position:relative;">
+        <a href="javascript:void(0);" class="nxl-head-link me-0 d-flex align-items-center gap-2 user-toggle"
+           onclick="this.parentElement.classList.toggle('open')" style="cursor:pointer;">
           <i class="feather-user fs-5"></i>
           <span class="d-none d-sm-inline fw-medium">{{ user.username }}</span>
+          <i class="feather-chevron-down ms-1" style="font-size:12px;"></i>
         </a>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="{% url 'admin:index' %}"><i class="feather-settings me-2"></i>Admin</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li>
-            <form method="post" action="{% url 'logout' %}">
-              {% csrf_token %}
-              <button type="submit" class="dropdown-item text-danger"><i class="feather-log-out me-2"></i>Cerrar sesión</button>
-            </form>
-          </li>
-        </ul>
+        <div class="user-dropdown" style="
+          display:none;position:absolute;right:0;top:calc(100% + 8px);
+          background:#fff;border:1px solid #e9ecef;border-radius:8px;
+          min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:9999;padding:4px 0;">
+          <a href="{% url 'admin:index' %}" class="dropdown-item d-flex align-items-center gap-2 py-2 px-3">
+            <i class="feather-settings"></i> Admin
+          </a>
+          <hr class="my-1">
+          <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger border-0 bg-transparent w-100">
+              <i class="feather-log-out"></i> Cerrar sesión
+            </button>
+          </form>
+        </div>
       </div>
+      <script>
+        document.addEventListener('click', function(e) {
+          document.querySelectorAll('.nxl-head-link-list.open').forEach(function(el) {
+            if (!el.contains(e.target)) {
+              el.classList.remove('open');
+              el.querySelector('.user-dropdown').style.display = 'none';
+            }
+          });
+        });
+        document.querySelectorAll('.user-toggle').forEach(function(btn) {
+          btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var dd = btn.parentElement.querySelector('.user-dropdown');
+            dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+          });
+        });
+      </script>
       {% endif %}
     </div>
   </div>
