@@ -1,20 +1,124 @@
 {% extends "base.html" %}
-{% block page_title %}Preview: {{ script.name }}{% endblock %}
+{% block page_title %}Prueba: {{ script.name }}{% endblock %}
 {% block breadcrumb_items %}
 <li class="breadcrumb-item"><a href="{% url 'scripts:list' %}">Scripts</a></li>
-<li class="breadcrumb-item active">Preview</li>
+<li class="breadcrumb-item active">Prueba</li>
 {% endblock %}
 {% block content %}
 <div class="row">
-  <div class="col-xl-8">
-    <div class="card">
-      <div class="card-header"><h6 class="mb-0">Preview: {{ script.name }}</h6></div>
+  <!-- Panel de entrada: formulario de datos de prueba -->
+  <div class="col-lg-5 mb-3">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="feather-edit me-2"></i>Variables de prueba</h6>
+      </div>
       <div class="card-body">
-        <p class="text-muted small">Los <code>&#123;&#123;param&#125;&#125;</code> se reemplazaron con placeholders de ejemplo.</p>
-        <pre class="bg-light p-3 rounded" style="white-space:pre-wrap;">{{ rendered }}</pre>
-        <a href="{% url 'scripts:list' %}" class="btn btn-outline-secondary mt-3">← Volver</a>
+        {% if script.input_params %}
+          <form method="post" id="test-form">
+            {% csrf_token %}
+            <p class="text-muted small mb-4">Rellena los valores de prueba para previsualizar el script:</p>
+
+            {% for item in test_data_list %}
+            <div class="mb-3">
+              <label for="test_{{ item.param }}" class="form-label d-flex align-items-center gap-2">
+                <code class="bg-light px-2 py-1 rounded flex-grow-1">&#123;&#123;{{ item.param }}&#125;&#125;</code>
+              </label>
+              <input
+                type="text"
+                id="test_{{ item.param }}"
+                name="test_{{ item.param }}"
+                class="form-control"
+                value="{{ item.value }}"
+                placeholder="Ej: valor de prueba"
+              />
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="feather-play me-2"></i>Previsualizar
+            </button>
+          </form>
+        {% else %}
+          <div class="alert alert-info mb-0">
+            <i class="feather-info me-2"></i>
+            <small>Este script no tiene variables de entrada {{param}}.</small>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de salida: preview del script -->
+  <div class="col-lg-7">
+    <!-- Preview del script -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="feather-eye me-2"></i>Script renderizado</h6>
+      </div>
+      <div class="card-body">
+        {% if rendered %}
+          <div class="script-preview bg-light p-4 rounded border mb-3" style="min-height: 250px; font-family: 'Courier New', monospace; white-space: pre-wrap; word-wrap: break-word; font-size: 0.95rem; line-height: 1.6; color: #2c3e50;">{{ rendered }}</div>
+
+          {% if script.output_params %}
+          <div class="mt-3">
+            <p class="text-muted small mb-2"><strong>⬇ Parámetros que se capturarán:</strong></p>
+            <div class="d-flex flex-wrap gap-2">
+              {% for param in script.output_params %}
+                <span class="badge bg-info">[[{{ param }}]]</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        {% else %}
+          <div class="text-muted text-center py-5">
+            <i class="feather-eye-off" style="font-size: 2rem; opacity: 0.3;"></i>
+            <p class="mt-3">Rellena las variables y presiona "Previsualizar"</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Información del script -->
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="feather-info me-2"></i>Información del script</h6>
+      </div>
+      <div class="card-body">
+        <dl class="row small mb-0">
+          <dt class="col-sm-4">Nombre</dt>
+          <dd class="col-sm-8"><strong>{{ script.name }}</strong></dd>
+
+          <dt class="col-sm-4">Descripción</dt>
+          <dd class="col-sm-8">{{ script.description|default:"—" }}</dd>
+
+          <dt class="col-sm-4">Saludo</dt>
+          <dd class="col-sm-8"><code class="bg-light px-2 py-1 rounded">{{ script.greeting }}</code></dd>
+
+          <dt class="col-sm-4">Actualizado</dt>
+          <dd class="col-sm-8">{{ script.updated_at|date:"d/m/Y H:i" }}</dd>
+        </dl>
+
+        <div class="mt-4">
+          <a href="{% url 'scripts:edit' script.pk %}" class="btn btn-sm btn-outline-secondary me-2">
+            <i class="feather-edit-2 me-1"></i>Editar
+          </a>
+          <a href="{% url 'scripts:list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="feather-arrow-left me-1"></i>Volver
+          </a>
+        </div>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+  .card { box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
+  .card-header { background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; }
+  .card-header h6 { color: #495057; font-weight: 600; }
+  .script-preview { border-left: 4px solid #0d6efd; background-color: #f8f9fa; }
+  code { color: #d63384; font-size: 0.875em; }
+  .badge { font-size: 0.8rem; font-weight: 500; }
+  .form-label { font-weight: 500; color: #495057; }
+  input.form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
+</style>
 {% endblock %}

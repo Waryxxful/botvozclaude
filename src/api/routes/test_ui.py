@@ -2,6 +2,7 @@ import base64
 import struct
 import uuid
 import structlog
+import json
 from typing import AsyncIterator
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -59,19 +60,8 @@ async def test_ws(websocket: WebSocket) -> None:
     session_id = str(uuid.uuid4())
     logger.info("test_session_accepted", session_id=session_id)
 
-    try:
-        profile = get_default_profile()
-    except Exception as exc:
-        logger.error("test_profile_load_failed", error=str(exc))
-        await websocket.send_json({"type": "error", "message": f"No se pudo cargar el perfil: {exc}"})
-        await websocket.close()
-        return
-
-    session = SessionState(
-        call_id=session_id,
-        caller_number="web-test",
-        bot_profile=profile,
-    )
+    profile = None
+    script_data = None
 
     try:
         tts = _get_tts()
@@ -81,6 +71,70 @@ async def test_ws(websocket: WebSocket) -> None:
         await websocket.send_json({"type": "error", "message": f"No se pudieron iniciar los clientes GCP: {exc}"})
         await websocket.close()
         return
+
+    # Esperar el script cargado (máximo 3 segundos)
+    import asyncio
+    start_time = asyncio.get_event_loop().time()
+    logger.info("test_waiting_for_script", timeout_seconds=3)
+    while asyncio.get_event_loop().time() - start_time < 3:
+        try:
+            msg = await asyncio.wait_for(websocket.receive(), timeout=0.5)
+            logger.info("test_ws_msg_received", msg_type=msg.get("type"), has_text="text" in msg)
+            if "text" in msg and msg["text"]:
+                try:
+                    data = json.loads(msg["text"])
+                    logger.info("test_json_received", data_type=data.get("type"))
+                    if data.get("type") == "load_script":
+                        script_data = data
+                        logger.info("test_script_received", script_id=data.get("script_id"), script_name=data.get("script_name"))
+                        break
+                except json.JSONDecodeError as e:
+                    logger.warning("test_json_decode_failed", error=str(e))
+                    pass
+        except asyncio.TimeoutError:
+            continue
+
+    if not script_data:
+        logger.info("test_no_script_received", timeout_seconds=3)
+
+    # Cargar perfil (desde script vía HTTP a Django, o predeterminado)
+    if script_data and script_data.get("script_id"):
+        try:
+            import httpx
+            script_id = script_data["script_id"]
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(f"http://localhost:8001/scripts/api/{script_id}/json/")
+                resp.raise_for_status()
+                s = resp.json()
+            from config.bot_config import BotProfileSchema
+            profile = BotProfileSchema(
+                name=f"script_{script_id}",
+                system_prompt=s["system_prompt"],
+                greeting=s["greeting"],
+                farewell="Gracias por la llamada.",
+                guardrails={},
+                memory={},
+                tools={"enabled": []}
+            )
+            logger.info("test_script_loaded_ws", script_id=script_id, script_name=s.get("name"))
+        except Exception as exc:
+            logger.warning("test_script_load_failed", error=str(exc))
+            profile = None
+
+    if not profile:
+        try:
+            profile = get_default_profile()
+        except Exception as exc:
+            logger.error("test_profile_load_failed", error=str(exc))
+            await websocket.send_json({"type": "error", "message": f"No se pudo cargar el perfil: {exc}"})
+            await websocket.close()
+            return
+
+    session = SessionState(
+        call_id=session_id,
+        caller_number="web-test",
+        bot_profile=profile,
+    )
 
     try:
         greeting_pcm = await tts.synthesize(profile.greeting)
@@ -183,54 +237,35 @@ async def _build_response(
     })
 
 
-# ── HTML (voice-only single-button UI) ───────────────────────────────────────
+# ── HTML (Duralux Admin layout) ──────────────────────────────────────────────
 
 _HTML = """<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Voice Bot — Llamada de prueba</title>
+<title>Bot de Prueba — Voice Bot CRM</title>
+<link rel="stylesheet" href="/static/assets/vendors/css/vendors.min.css"/>
+<link rel="stylesheet" href="/static/assets/css/bootstrap.min.css"/>
+<link rel="stylesheet" href="/static/assets/css/theme.min.css"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,-apple-system,sans-serif;
-     background:linear-gradient(135deg,#0f1117 0%,#1a1f2e 100%);
-     color:#e2e8f0;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
-
-/* ── header ── */
-header{padding:16px 24px;border-bottom:1px solid #1e2130;display:flex;align-items:center;gap:10px;flex-shrink:0}
-.dot{width:9px;height:9px;border-radius:50%;background:#374151;transition:background .3s}
-.dot.ok{background:#10b981;box-shadow:0 0 8px #10b981}
-h1{font-size:16px;font-weight:600;color:#f1f5f9;flex:1}
-#chip{font-size:11px;color:#94a3b8;background:#1e293b;padding:3px 10px;border-radius:20px;white-space:nowrap}
-
-/* ── messages ── */
-#msgs{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:10px}
-.bubble{max-width:78%;padding:11px 15px;border-radius:14px;font-size:14px;line-height:1.55;animation:fade .3s}
-.bubble .lbl{font-size:10px;margin-bottom:4px;opacity:.6;text-transform:uppercase;letter-spacing:.06em}
-.bubble.bot{background:#1e293b;align-self:flex-start;border-bottom-left-radius:3px}
-.bubble.user{background:#1d4ed8;align-self:flex-end;border-bottom-right-radius:3px}
-.bubble.sys{background:transparent;align-self:center;font-size:12px;color:#64748b;font-style:italic;max-width:90%;text-align:center}
+/* ── call bubbles ── */
+.bubble{animation:fade .3s}
+.bubble .lbl{font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
 @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
-/* ── call control area ── */
-#control{padding:24px;border-top:1px solid #1e2130;display:flex;flex-direction:column;align-items:center;gap:14px;flex-shrink:0;background:#0a0d14}
-
+/* ── call button ── */
 .call-btn{
-  width:84px;height:84px;border-radius:50%;border:none;cursor:pointer;
+  width:80px;height:80px;border-radius:50%;border:none;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
-  font-size:34px;color:#fff;
+  font-size:32px;color:#fff;
   transition:transform .15s,box-shadow .25s;
-  box-shadow:0 4px 16px rgba(0,0,0,.4);
+  box-shadow:0 4px 16px rgba(0,0,0,.25);
 }
-.call-btn:hover:not(:disabled){transform:scale(1.05)}
+.call-btn:hover:not(:disabled){transform:scale(1.06)}
 .call-btn:disabled{opacity:.5;cursor:not-allowed}
-
-.call-btn.start{background:linear-gradient(135deg,#10b981 0%,#059669 100%)}
-.call-btn.end{background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%)}
-
-#hint{font-size:12px;color:#64748b;letter-spacing:.02em}
-#hint b{color:#cbd5e1}
+.call-btn.start{background:linear-gradient(135deg,#10b981,#059669)}
+.call-btn.end{background:linear-gradient(135deg,#dc2626,#991b1b)}
 
 /* listening pulse */
 .listening{position:relative}
@@ -239,32 +274,186 @@ h1{font-size:16px;font-weight:600;color:#f1f5f9;flex:1}
   border:2px solid #10b981;opacity:.6;
   animation:ring 1.4s ease-out infinite;
 }
-@keyframes ring{
-  0%{transform:scale(.95);opacity:.7}
-  100%{transform:scale(1.35);opacity:0}
-}
+@keyframes ring{0%{transform:scale(.95);opacity:.7}100%{transform:scale(1.35);opacity:0}}
 
-/* scrollbar */
+/* messages area */
+#msgs{height:380px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 0;}
 #msgs::-webkit-scrollbar{width:4px}
-#msgs::-webkit-scrollbar-thumb{background:#1e293b;border-radius:2px}
+#msgs::-webkit-scrollbar-thumb{background:#dee2e6;border-radius:2px}
 </style>
 </head>
 <body>
 
-<header>
-  <div class="dot" id="dot"></div>
-  <h1>Voice Bot &mdash; Llamada de prueba</h1>
-  <div id="chip">Sin conectar</div>
+<!-- SIDEBAR -->
+<nav class="nxl-navigation">
+  <div class="navbar-wrapper">
+    <div class="m-header">
+      <a href="http://localhost:8001/calls/dashboard/" class="b-brand">
+        <span class="nxl-mtext fw-bold fs-5">Voice Bot</span>
+      </a>
+    </div>
+    <div class="navbar-content">
+      <ul class="nxl-navbar">
+        <li class="nxl-item nxl-caption"><label>Navegación</label></li>
+
+        <li class="nxl-item">
+          <a href="http://localhost:8001/calls/dashboard/" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-monitor"></i></span>
+            <span class="nxl-mtext">Dashboard</span>
+          </a>
+        </li>
+
+        <li class="nxl-item nxl-hasmenu">
+          <a href="javascript:void(0);" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-phone-incoming"></i></span>
+            <span class="nxl-mtext">Llamadas</span>
+            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+          </a>
+          <ul class="nxl-submenu">
+            <li class="nxl-item"><a class="nxl-link" href="http://localhost:8001/calls/">Lista de llamadas</a></li>
+          </ul>
+        </li>
+
+        <li class="nxl-item nxl-hasmenu">
+          <a href="javascript:void(0);" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-layers"></i></span>
+            <span class="nxl-mtext">Lotes</span>
+            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+          </a>
+          <ul class="nxl-submenu">
+            <li class="nxl-item"><a class="nxl-link" href="http://localhost:8001/batch/">Ver lotes</a></li>
+            <li class="nxl-item"><a class="nxl-link" href="http://localhost:8001/batch/nuevo/">Nuevo lote</a></li>
+          </ul>
+        </li>
+
+        <li class="nxl-item nxl-hasmenu">
+          <a href="javascript:void(0);" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-code"></i></span>
+            <span class="nxl-mtext">Scripts</span>
+            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+          </a>
+          <ul class="nxl-submenu">
+            <li class="nxl-item"><a class="nxl-link" href="http://localhost:8001/scripts/">Ver scripts</a></li>
+            <li class="nxl-item"><a class="nxl-link" href="http://localhost:8001/scripts/nuevo/">Nuevo script</a></li>
+          </ul>
+        </li>
+
+        <li class="nxl-item nxl-hasmenu">
+          <a href="javascript:void(0);" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-target"></i></span>
+            <span class="nxl-mtext">Campañas</span>
+            <span class="nxl-arrow"><i class="feather-chevron-right"></i></span>
+          </a>
+          <ul class="nxl-submenu">
+            <li class="nxl-item"><a class="nxl-link" href="http://localhost:8001/campaigns/">Ver campañas</a></li>
+            <li class="nxl-item"><a class="nxl-link" href="http://localhost:8001/campaigns/nueva/">Nueva campaña</a></li>
+          </ul>
+        </li>
+
+        <li class="nxl-item nxl-caption"><label>Herramientas</label></li>
+
+        <li class="nxl-item nxl-active">
+          <a href="/test/" class="nxl-link">
+            <span class="nxl-micon"><i class="feather-mic"></i></span>
+            <span class="nxl-mtext">Bot de Prueba</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- HEADER -->
+<header class="nxl-header">
+  <div class="header-wrapper">
+    <div class="header-left d-flex align-items-center gap-4">
+      <div class="nxl-navigation-toggle">
+        <a href="javascript:void(0);" id="menu-mini-button"><i class="feather-align-left"></i></a>
+      </div>
+    </div>
+    <div class="header-right ms-auto d-flex align-items-center gap-3">
+      <span id="chip" class="badge bg-secondary">Sin conectar</span>
+      <span class="d-flex align-items-center gap-1">
+        <span class="dot" id="dot" style="width:9px;height:9px;border-radius:50%;background:#6c757d;transition:background .3s;display:inline-block;"></span>
+      </span>
+    </div>
+  </div>
 </header>
 
-<div id="msgs">
-  <div class="bubble sys">Presiona el botón verde para iniciar la llamada.</div>
-</div>
+<!-- MAIN CONTENT -->
+<main class="nxl-container">
+  <div class="nxl-content">
+    <div class="page-header">
+      <div class="page-header-left d-flex align-items-center">
+        <div class="page-header-title">
+          <h5 class="m-b-10">Bot de Prueba</h5>
+        </div>
+        <ul class="breadcrumb">
+          <li class="breadcrumb-item"><a href="http://localhost:8001/calls/dashboard/">Home</a></li>
+          <li class="breadcrumb-item active">Bot de Prueba</li>
+        </ul>
+      </div>
+    </div>
 
-<div id="control">
-  <button class="call-btn start" id="call">📞</button>
-  <div id="hint"><b>Iniciar llamada</b></div>
-</div>
+    <div class="main-content">
+      <div class="row g-3">
+
+        <!-- Chat messages -->
+        <div class="col-xl-8">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h6 class="mb-0"><i class="feather-message-circle me-2"></i>Conversación</h6>
+              <span id="chip2" class="badge bg-secondary">Sin conectar</span>
+            </div>
+            <div class="card-body">
+              <div id="msgs">
+                <div class="text-center text-muted small fst-italic py-4">Presiona el botón verde para iniciar la llamada.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Call control -->
+        <div class="col-xl-4">
+          <div class="card">
+            <div class="card-header"><h6 class="mb-0"><i class="feather-phone me-2"></i>Control de llamada</h6></div>
+            <div class="card-body d-flex flex-column align-items-center gap-4 py-5">
+              <button class="call-btn start" id="call">📞</button>
+              <div id="hint" class="text-muted small text-center"><b>Iniciar llamada</b></div>
+              <div class="text-muted" style="font-size:11px;">
+                El bot usará el micrófono de tu computador.<br>
+                Habla cuando el botón pulse en verde.
+              </div>
+            </div>
+          </div>
+
+          <!-- Script cargado -->
+          <div class="card mt-3">
+            <div class="card-header"><h6 class="mb-0"><i class="feather-file-text me-2"></i>Script activo</h6></div>
+            <div class="card-body p-3">
+              <div id="script-card-loaded" style="display:none;">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <span class="badge bg-success">Cargado</span>
+                  <strong id="loaded-script-name" style="font-size:0.9rem;"></strong>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="unload-script">
+                  <i class="feather-x me-1"></i>Quitar script
+                </button>
+              </div>
+              <div id="script-card-empty">
+                <p class="text-muted small mb-2 text-center">Sin script cargado</p>
+                <a href="http://localhost:8001/scripts/" class="btn btn-sm btn-outline-primary w-100">
+                  <i class="feather-list me-1"></i>Seleccionar script
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
 
 <script>
 // ── globals ────────────────────────────────────────────────────────────────
@@ -280,6 +469,10 @@ const chipEl  = document.getElementById('chip');
 const dotEl   = document.getElementById('dot');
 const callBtn = document.getElementById('call');
 const hintEl  = document.getElementById('hint');
+const scriptCardLoaded = document.getElementById('script-card-loaded');
+const scriptCardEmpty = document.getElementById('script-card-empty');
+const loadedScriptNameEl = document.getElementById('loaded-script-name');
+const unloadScriptBtn = document.getElementById('unload-script');
 
 let ws          = null;
 let audioCtx    = null;
@@ -290,6 +483,35 @@ let listening   = false;       // currently capturing user speech
 let speaking    = false;       // bot is currently playing audio
 let speechMs    = 0;           // accumulated speech duration this turn
 let silenceMs   = 0;           // accumulated silence
+let loadedScriptId = null;     // ID of loaded script
+let loadedScriptName = null;   // Name of loaded script
+
+// ── Manejo de script cargado ────────────────────────────────────────────────
+function updateLoadedScriptDisplay() {
+  const params = new URLSearchParams(window.location.search);
+  const scriptId = params.get('script_id');
+  const scriptName = params.get('script_name');
+
+  if (scriptId && scriptName) {
+    loadedScriptId = scriptId;
+    loadedScriptName = decodeURIComponent(scriptName);
+    loadedScriptNameEl.textContent = loadedScriptName;
+    scriptCardLoaded.style.display = 'block';
+    scriptCardEmpty.style.display = 'none';
+    console.log('✅ Script en URL:', {scriptId, scriptName: loadedScriptName});
+  } else {
+    loadedScriptId = null;
+    loadedScriptName = null;
+    scriptCardLoaded.style.display = 'none';
+    scriptCardEmpty.style.display = 'block';
+    console.log('⚠️ Sin script en URL');
+  }
+}
+
+unloadScriptBtn.addEventListener('click', () => { window.location.href = '/test/'; });
+
+// Ejecutar inmediatamente (no esperar DOMContentLoaded porque el script es inline al final del body)
+updateLoadedScriptDisplay();
 
 // ── AudioWorklet processor (inline blob) ───────────────────────────────────
 function makeProcessorURL() {
@@ -432,21 +654,24 @@ async function playWav(b64) {
 // ── UI helpers ─────────────────────────────────────────────────────────────
 function addMsg(role, text) {
   const d = document.createElement('div');
-  d.className = `bubble ${role}`;
-  if (role !== 'sys') {
-    const lbl = document.createElement('div');
-    lbl.className = 'lbl';
-    lbl.textContent = role === 'bot' ? 'Asistente' : 'Tú';
-    d.appendChild(lbl);
+  d.className = 'bubble mb-2';
+  if (role === 'bot') {
+    d.innerHTML = `<div class="lbl text-primary">Asistente</div><div class="bg-light rounded p-2 d-inline-block" style="max-width:85%;font-size:14px;">${text}</div>`;
+  } else if (role === 'user') {
+    d.className += ' text-end';
+    d.innerHTML = `<div class="lbl text-secondary">Tú</div><div class="bg-primary text-white rounded p-2 d-inline-block" style="max-width:85%;font-size:14px;">${text}</div>`;
+  } else {
+    d.innerHTML = `<div class="text-center text-muted small fst-italic">${text}</div>`;
   }
-  const p = document.createElement('p');
-  p.textContent = text;
-  d.appendChild(p);
   msgsEl.appendChild(d);
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
-function setChip(t) { chipEl.textContent = t; }
+function setChip(t) {
+  chipEl.textContent = t;
+  const c2 = document.getElementById('chip2');
+  if (c2) c2.textContent = t;
+}
 
 function setButtonState(state) {
   if (state === 'start') {
@@ -507,9 +732,27 @@ function connect() {
   ws.binaryType = 'arraybuffer';
 
   ws.onopen = () => {
-    dotEl.classList.add('ok');
+    dotEl.style.background = '#10b981';
+    dotEl.style.boxShadow = '0 0 8px #10b981';
+    chipEl.className = 'badge bg-success';
+    const c2 = document.getElementById('chip2'); if(c2) c2.className = 'badge bg-success';
     setChip('Conectado');
     callBtn.disabled = false;
+
+    // Enviar script cargado si existe (leer de URL)
+    const params = new URLSearchParams(window.location.search);
+    const scriptId = params.get('script_id');
+    const scriptName = params.get('script_name');
+    if (scriptId && scriptName) {
+      console.log('✅ Enviando script al servidor:', {scriptId, scriptName});
+      ws.send(JSON.stringify({
+        type: 'load_script',
+        script_id: scriptId,
+        script_name: scriptName
+      }));
+    } else {
+      console.log('⚠️ Sin script en URL - usando perfil predeterminado');
+    }
   };
 
   ws.onmessage = async (ev) => {
@@ -544,7 +787,8 @@ function connect() {
   };
 
   ws.onclose = (ev) => {
-    dotEl.classList.remove('ok');
+    dotEl.style.background = '#6c757d';
+    dotEl.style.boxShadow = 'none';
     if (inCall) {
       addMsg('sys', `Conexión cerrada (${ev.code}). Finalizando llamada…`);
       endCall();
@@ -553,9 +797,12 @@ function connect() {
 
   ws.onerror = () => {
     setChip('Error de conexión');
+    dotEl.style.background = '#dc3545';
   };
 }
 </script>
+<script src="/static/assets/vendors/js/vendors.min.js"></script>
+<script src="/static/assets/js/common-init.min.js"></script>
 </body>
 </html>
 """

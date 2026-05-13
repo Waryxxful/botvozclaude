@@ -42,6 +42,23 @@ def reanalyze_view(request, pk):
 
 
 @login_required
+def bot_test_view(request):
+    from apps.scripts.models import Script
+    script_id = request.GET.get("script_id")
+    script = None
+    if script_id:
+        try:
+            script = Script.objects.get(pk=script_id)
+        except Script.DoesNotExist:
+            pass
+    scripts = Script.objects.all()
+    return render(request, "calls/bot_test.html", {
+        "script": script,
+        "scripts": scripts,
+    })
+
+
+@login_required
 def dashboard_view(request):
     total_calls = Call.objects.count()
     contacted = Call.objects.filter(status="done").count()

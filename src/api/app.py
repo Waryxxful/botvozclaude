@@ -1,7 +1,10 @@
+import os
 import structlog
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from config.settings import get_settings
 from .middleware import LoggingMiddleware
@@ -50,6 +53,11 @@ def create_app() -> FastAPI:
     app.include_router(telnyx_router, tags=["Telephony"])
     app.include_router(test_ui_router, tags=["Test UI"])
     app.include_router(calls_router, tags=["Calls"])
+
+    # Serve Duralux admin assets (same origin → no CORS issues for fonts/icons)
+    duralux_dir = Path(__file__).resolve().parent.parent.parent / "duralux-admin"
+    if duralux_dir.exists():
+        app.mount("/static", StaticFiles(directory=str(duralux_dir)), name="static")
 
     return app
 
