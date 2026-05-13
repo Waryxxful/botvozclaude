@@ -33,6 +33,7 @@ def render_template(text: str, values: Mapping[str, str]) -> str:
 
     Raises KeyError if a value is missing.
     """
+    # Re-parse to identify required input_params for validation
     parsed = parse_template(text, "")
     missing = [p for p in parsed.input_params if p not in values]
     if missing:
