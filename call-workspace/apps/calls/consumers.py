@@ -123,6 +123,7 @@ class BotTestConsumer(AsyncWebsocketConsumer):
 
             self.profile = BotProfileSchema(
                 name=f"script_{script.pk}",
+                description=script.description or "",
                 system_prompt=prompt_rendered,
                 greeting=greeting_rendered,
                 farewell="Gracias por la llamada.",
