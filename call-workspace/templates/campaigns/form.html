@@ -1,78 +1,41 @@
 {% extends "base.html" %}
-{% block title %}{{ title }} — Call Workspace{% endblock %}
-
+{% block page_title %}{{ title }}{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'campaigns:list' %}">Campañas</a></li>
+<li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
 {% block content %}
-<div class="mb-4 text-sm text-gray-500">
-    <a href="{% url 'campaigns:list' %}" class="hover:text-gray-800">Campañas</a>
-    <span class="mx-2">/</span>
-    <span class="text-gray-800">{{ title }}</span>
-</div>
-
-<div class="max-w-2xl">
-    <h1 class="text-xl font-semibold text-gray-900 mb-6">{{ title }}</h1>
-
-    <form method="post" class="space-y-5">
-        {% csrf_token %}
-
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre <span class="text-red-500">*</span>
-                </label>
-                {{ form.name }}
-                {% if form.name.errors %}
-                <p class="mt-1 text-xs text-red-600">{{ form.name.errors.0 }}</p>
-                {% endif %}
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-                {{ form.description }}
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Directorio FTP <span class="text-red-500">*</span>
-                </label>
-                {{ form.ftp_directory }}
-                <p class="mt-1 text-xs text-gray-400">Ruta en el servidor FTP donde se depositan los audios de esta campaña.</p>
-            </div>
-
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                    Script de cumplimiento <span class="text-red-500">*</span>
-                </label>
-                {{ form.script_text }}
-                <p class="mt-1 text-xs text-gray-400">
-                    Lista los pasos que el agente debe cumplir. La IA evaluará cada uno.
-                    Escribe un paso por línea o en texto libre.
-                </p>
-                {% if form.script_text.errors %}
-                <p class="mt-1 text-xs text-red-600">{{ form.script_text.errors.0 }}</p>
-                {% endif %}
-            </div>
-
-            <div class="flex items-center gap-2">
-                {{ form.is_active }}
-                <label class="text-sm text-gray-700">Campaña activa</label>
-            </div>
-
-        </div>
-
-        <div class="flex items-center gap-3">
-            <button type="submit"
-                class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
-                Guardar
-            </button>
-            <a href="{% url 'campaigns:list' %}" class="text-sm text-gray-500 hover:text-gray-700">Cancelar</a>
-            {% if campaign %}
-            <a href="{% url 'calls:list' %}?campaign={{ campaign.id }}"
-               class="ml-auto text-xs text-slate-500 hover:text-slate-800 underline underline-offset-2">
-                Ver llamadas de esta campaña →
-            </a>
-            {% endif %}
-        </div>
-    </form>
+<div class="row">
+  <div class="col-xl-6">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">{{ title }}</h6></div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          {% csrf_token %}
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nombre</label>
+            {{ form.name }}
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Descripción</label>
+            {{ form.description }}
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">Script</label>
+            {{ form.script }}
+          </div>
+          <div class="col-12 d-flex align-items-center gap-2">
+            {{ form.is_active }}
+            <label class="form-label mb-0">Activa</label>
+          </div>
+          {% if form.errors %}<div class="col-12"><div class="alert alert-danger">{{ form.errors }}</div></div>{% endif %}
+          <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a href="{% url 'campaigns:list' %}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

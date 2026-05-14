@@ -31,3 +31,19 @@ def build_system_prompt(session: SessionState) -> str:
         )
 
     return "\n".join(parts)
+
+
+def build_dynamic_system_prompt(rendered_prompt: str, output_params: list[str]) -> str:
+    """Append [[output_params]] collection instructions to an already-rendered prompt."""
+    if not output_params:
+        return rendered_prompt
+
+    fields = ", ".join(output_params)
+    instructions = (
+        f"\n\n[Instrucciones del sistema] Al final de la conversación debes haber "
+        f"intentado recolectar los siguientes datos del cliente: {fields}. "
+        f"Si no logras obtener alguno, deja null. Cuando el cliente mencione "
+        f'fechas relativas (como "mañana" o "el jueves"), calcula la fecha exacta '
+        f"basándote en la fecha actual y confírmala con el cliente antes de cerrar."
+    )
+    return rendered_prompt + instructions

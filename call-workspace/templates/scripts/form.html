@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'scripts:list' %}">Scripts</a></li>
+<li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0"><i class="feather-edit-3 me-2"></i>{{ title }}</h6></div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <ul class="nav nav-tabs mb-4" id="scriptTabs" role="tablist">
+            <li class="nav-item">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-contenido" type="button">
+                <i class="feather-file-text me-1"></i>Contenido
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-voz" type="button">
+                <i class="feather-mic me-1"></i>Voz
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-comportamiento" type="button">
+                <i class="feather-settings me-1"></i>Comportamiento
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-contenido">
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Nombre</label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Descripción</label>
+                {{ form.description }}
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Saludo inicial</label>
+                {{ form.greeting }}
+                <small class="text-muted">Soporta <code>&#123;&#123;variables&#125;&#125;</code></small>
+                {% if form.greeting.errors %}<div class="text-danger small">{{ form.greeting.errors }}</div>{% endif %}
+              </div>
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Prompt / instrucciones</label>
+                <div class="alert alert-light border small mb-2 py-2">
+                  <code>&#123;&#123;var&#125;&#125;</code> entrada &nbsp;|&nbsp; <code>[[var]]</code> captura &nbsp;|&nbsp; <code>## comentario ##</code>
+                </div>
+                {{ form.prompt_template }}
+              </div>
+              {% if script %}
+              <div class="alert alert-info small">
+                <strong>Inputs detectados:</strong> {{ script.input_params|join:", "|default:"—" }}<br>
+                <strong>Outputs detectados:</strong> {{ script.output_params|join:", "|default:"—" }}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="tab-pane fade" id="tab-voz">
+              <div class="mb-4">
+                <label class="form-label fw-semibold">Voz del agente</label>
+                {{ form.tts_voice }}
+                {% if gcfg %}<small class="text-muted">Default global: {{ gcfg.tts_voice }}</small>{% endif %}
+              </div>
+              <div class="mb-4">
+                <label class="form-label fw-semibold">Velocidad</label>
+                {{ form.tts_speed }}
+                {% if gcfg %}<small class="text-muted">Default global: {{ gcfg.tts_speed }}x | Rango: 0.5 – 2.0</small>{% endif %}
+              </div>
+              <div class="mb-4">
+                <label class="form-label fw-semibold">Tono (pitch)</label>
+                {{ form.tts_pitch }}
+                {% if gcfg %}<small class="text-muted">Default global: {{ gcfg.tts_pitch }} | Rango: -10 – +10</small>{% endif %}
+              </div>
+            </div>
+
+            <div class="tab-pane fade" id="tab-comportamiento">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Temperatura LLM</label>
+                  {{ form.llm_temperature }}
+                  {% if gcfg %}<small class="text-muted">0 = preciso, 1 = creativo. Default: {{ gcfg.llm_temperature }}</small>{% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Tokens máximos</label>
+                  {{ form.llm_max_tokens }}
+                  {% if gcfg %}<small class="text-muted">Longitud máxima de respuesta. Default: {{ gcfg.llm_max_tokens }}</small>{% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Timeout de silencio (ms)</label>
+                  {{ form.vad_silence_ms }}
+                  {% if gcfg %}<small class="text-muted">Ms de silencio para cortar turno. Default: {{ gcfg.vad_silence_ms }}</small>{% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold">Duración máxima (seg)</label>
+                  {{ form.max_call_duration_seconds }}
+                  {% if gcfg %}<small class="text-muted">Default: {{ gcfg.max_call_duration_seconds }}</small>{% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary"><i class="feather-save me-2"></i>Guardar</button>
+            <a href="{% url 'scripts:list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            {% if script %}
+            <a href="{% url 'scripts:preview' script.pk %}" class="btn btn-outline-info ms-auto">
+              <i class="feather-eye me-2"></i>Probar
+            </a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0"><i class="feather-book-open me-2"></i>Ejemplo de sintaxis</h6></div>
+      <div class="card-body small">
+        <pre class="bg-light p-2 rounded" style="font-size:0.8rem;">Saludo:
+Hola {{nombre}} desde
+{{concesionaria}}
+
+Prompt:
+Confirmar {{fecha_agenda}}
+&#123;&#123;asistira&#125;&#125;?
+[[confirmacion]]
+
+## Opciones: asistira,
+   re-agenda, cancela ##</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,74 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Campañas — Call Workspace{% endblock %}
-
+{% block page_title %}Campañas{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Campañas</li>{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-    <h1 class="text-xl font-semibold text-gray-900">Campañas</h1>
-    <a href="{% url 'campaigns:create' %}"
-       class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-        + Nueva campaña
-    </a>
-</div>
-
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="bg-gray-50 border-b border-gray-200 text-left">
-                <th class="px-4 py-3 font-medium text-gray-500">Nombre</th>
-                <th class="px-4 py-3 font-medium text-gray-500">Directorio FTP</th>
-                <th class="px-4 py-3 font-medium text-gray-500 text-center">Llamadas</th>
-                <th class="px-4 py-3 font-medium text-gray-500 text-center">Estado</th>
-                <th class="px-4 py-3 font-medium text-gray-500"></th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-            {% for campaign in campaigns %}
-            <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-3">
-                    <p class="font-medium text-gray-900">{{ campaign.name }}</p>
-                    {% if campaign.description %}
-                    <p class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{{ campaign.description }}</p>
-                    {% endif %}
-                </td>
-                <td class="px-4 py-3 text-gray-500 font-mono text-xs">{{ campaign.ftp_directory }}</td>
-                <td class="px-4 py-3 text-center text-gray-700 font-medium">{{ campaign.call_count }}</td>
-                <td class="px-4 py-3 text-center">
-                    <span id="badge-{{ campaign.id }}">
-                        {% if campaign.is_active %}
-                        <button hx-post="{% url 'campaigns:toggle' campaign.id %}"
-                                hx-target="#badge-{{ campaign.id }}"
-                                hx-swap="innerHTML"
-                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 transition-colors cursor-pointer">
-                            Activa
-                        </button>
-                        {% else %}
-                        <button hx-post="{% url 'campaigns:toggle' campaign.id %}"
-                                hx-target="#badge-{{ campaign.id }}"
-                                hx-swap="innerHTML"
-                                hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors cursor-pointer">
-                            Inactiva
-                        </button>
-                        {% endif %}
-                    </span>
-                </td>
-                <td class="px-4 py-3 text-right">
-                    <a href="{% url 'campaigns:edit' campaign.id %}"
-                       class="text-xs text-slate-600 hover:text-slate-900 underline underline-offset-2">
-                        Editar
-                    </a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5" class="px-4 py-12 text-center text-gray-400 text-sm">
-                    No hay campañas.
-                    <a href="{% url 'campaigns:create' %}" class="text-slate-600 underline ml-1">Crear una</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Campañas</h6>
+        <a href="{% url 'campaigns:create' %}" class="btn btn-primary btn-sm"><i class="feather-plus me-1"></i>Nueva campaña</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr><th>Nombre</th><th>Script</th><th>Activa</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for c in campaigns %}
+              <tr>
+                <td class="fw-semibold">{{ c.name }}</td>
+                <td>{% if c.script %}<span class="badge bg-light text-dark">{{ c.script.name }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                <td>{% if c.is_active %}<span class="badge bg-success">Activa</span>{% else %}<span class="badge bg-secondary">Inactiva</span>{% endif %}</td>
+                <td><a href="{% url 'campaigns:edit' c.pk %}" class="btn btn-sm btn-outline-secondary">Editar</a></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4">No hay campañas.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}

@@ -1,0 +1,24 @@
+COMANDO PARA LEVANTAR EL SERVIDOR
+==================================
+
+Ejecuta en PowerShell o CMD:
+
+cd BOT_VOZ\call-workspace
+py -3.13 -m daphne -b 127.0.0.1 -p 8001 config.asgi:application
+
+---
+
+ACCESO A LA PÁGINA
+==================
+
+URL: http://localhost:8001
+Usuario: admin
+Contraseña: admin123
+
+---
+
+NOTAS
+=====
+- El servidor estará listo cuando veas "HTTP/2 support enabled"
+- Usa Ctrl+C para detener el servidor
+- El servidor corre en http://localhost:8001 (puerto 8001)

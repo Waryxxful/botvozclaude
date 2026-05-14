@@ -1,152 +1,271 @@
 # BOT_VOZ — Estado del Proyecto
 
-**Última actualización:** 2026-05-12  
-**Rama:** master
+**Última actualización:** 2026-05-13  
+**Rama activa:** `feat/voice-bot-integration`  
+**Branch principal:** `master`
 
 ---
 
-## Estado actual
+## Arquitectura general
 
-El pipeline STT → LLM → TTS está **funcionando en local**. Hay una interfaz web de prueba en `http://localhost:8000/test/` que permite probar una conversación de voz completa sin número de teléfono. Lo que falta es conectar la telefonía (Telnyx) para hacer llamadas reales.
-
----
-
-## Componentes y su estado
-
-### Infraestructura
-| Archivo | Estado |
-|---------|--------|
-| `config/settings.py` | ✅ Funcional — carga `.env`, construye bundle SSL compatible con Avast/proxies corporativos |
-| `config/bot_config.py` | ✅ Funcional |
-| `config/bot_profiles/default.yaml` | ✅ Funcional — idioma `es-US`, voz `es-US-Neural2-A` |
-| `config/bot_profiles/simple_qa.yaml` | ✅ Funcional — perfil activo según `.env` |
-| `Dockerfile` | ✅ Listo para Cloud Run (python:3.12-slim) |
-| `cloudbuild.yaml` | ✅ Pipeline Cloud Build → Artifact Registry → Cloud Run |
-| `requirements.txt` | ✅ Actualizado para Python 3.13 (telnyx quitado, numpy≥2.1, pydantic≥2.10, aiohttp libre, GCP packages actualizados) |
-
-### API (FastAPI)
-| Endpoint | Estado |
-|----------|--------|
-| `GET /health` | ✅ OK |
-| `GET /health/readiness` | ✅ OK |
-| `GET /test/` | ✅ **UI de prueba vocal** |
-| `WS /test/ws` | ✅ **Saludo TTS → escucha → STT → LLM → TTS funciona end-to-end** |
-| `POST /webhooks/telnyx` | ✅ Implementado — requiere Telnyx configurado para probar |
-| `GET /admin/*` | ⚠️ Stub — devuelve ceros |
-
-### Pipeline de voz (probado y funcionando)
-| Componente | Estado |
-|------------|--------|
-| Google TTS (Neural2, `es-US-Neural2-A`) | ✅ Funciona — autenticado, produce audio |
-| Google STT v2 (streaming, `es-US`) | ✅ Funciona |
-| Gemini 2.0 Flash via Vertex AI | ✅ Funciona — streaming + function calling |
-| VAD (cliente web, client-side) | ✅ Implementado en JS (AudioWorklet) |
-| VAD (servidor, webrtcvad) | ⚠️ No disponible en Windows (sin Visual Studio) — solo se usa en la ruta Telnyx |
-
-### Telefonía (pendiente de probar)
-| Componente | Estado |
-|------------|--------|
-| Webhook Telnyx (Ed25519, parsing) | ✅ Código implementado |
-| CallOrchestrator (VAD→STT→LLM→TTS en llamada real) | ✅ Código implementado |
-| TelnexMediaStreamingClient (WebSocket con Telnyx) | ✅ Código implementado |
-| Prueba con número real | ❌ **No probado** — falta configurar Telnyx y URL pública |
-
-### Persistencia
-| Componente | Estado |
-|------------|--------|
-| Firestore (sessiones, transcripciones) | ✅ Código implementado — credenciales GCP OK |
-| Pub/Sub (eventos de llamada) | ✅ Código implementado |
-| Colecciones Firestore creadas | ⚠️ Se crean al primer write — no inicializadas manualmente |
-| Topic Pub/Sub `voice-bot-call-events` | ⚠️ No verificado si existe |
-
----
-
-## Qué se probó y funcionó
+El proyecto corre en **un solo servidor** — Django + Daphne. FastAPI fue eliminado.
 
 ```
-✅ google.cloud.texttospeech: sintetizó "hola mundo" → 42 KB PCM16
-✅ WebSocket /test/ws: conecta, envía saludo TTS (278 KB audio), espera voz
-✅ STT: transcribe audio PCM16 16kHz desde el micrófono del navegador
-✅ LLM: Gemini responde en streaming, se concatena correctamente
-✅ TTS: sintetiza la respuesta del LLM, el navegador la reproduce
-✅ Conversación multi-turno: la sesión mantiene historial correctamente
+Navegador / Telnyx → localhost:8001 (Django + Daphne)
+  ├── UI con sidebar (base.html + duralux-admin template)
+  ├── WS /ws/bot-test/        → consumers.py  → GCP (TTS + STT + Gemini)
+  ├── REST /api/v1/           → django-ninja
+  │     ├── /campaigns/       Campañas CRUD
+  │     ├── /batch/           Lotes de llamadas
+  │     ├── /calls/           Historial y análisis
+  │     ├── /webhooks/telnyx  Webhook Telnyx (sin auth)
+  │     ├── /calls/initiate   Llamadas salientes
+  │     ├── /admin/sessions   Sesiones activas
+  │     ├── /admin/metrics    Métricas
+  │     ├── /health           Health check (sin auth)
+  │     └── /health/readiness Readiness check (sin auth)
+  └── BD SQLite (dev) / SQL Server (prod)
 ```
 
 ---
 
-## Qué falta para probar con un número de teléfono real
-
-| # | Qué falta | Cómo resolverlo |
-|---|-----------|-----------------|
-| 1 | **URL pública para webhook** | `ngrok http 8000` → copiar URL HTTPS |
-| 2 | **Telnyx Media Streaming activado** | Portal Telnyx → SIP Connection → Media Streaming → activar con la URL de ngrok |
-| 3 | **Pub/Sub topic** | `gcloud pubsub topics create voice-bot-call-events` |
-| 4 | **webrtcvad en Windows** | Instalar Visual Studio Build Tools (para compilar la extensión C), o usar Docker |
-| 5 | **`gcloud` CLI no instalado** | Instalar Google Cloud SDK para poder ejecutar comandos `gcloud` |
-
-> **Nota:** Las variables `TELNYX_API_KEY`, `TELNYX_PUBLIC_KEY`, `TELNYX_SIP_CONNECTION_ID` ya están en el `.env`. Solo falta exponer el servidor públicamente y activar Media Streaming en el portal.
-
----
-
-## Cómo correr el servidor local
+## Cómo levantar el servidor
 
 ```bash
-# Activar entorno (Python 3.13, creado con py -3.13 -m venv .venv)
-.venv\Scripts\python.exe -m uvicorn src.api.app:create_app \
-  --factory --host 0.0.0.0 --port 8000 \
-  --ws-ping-interval 20 --ws-ping-timeout 30
-
-# Prueba vocal en el navegador
-# → http://localhost:8000/test/
+# ── Un solo comando ────────────────────────────────────────────────────────
+cd BOT_VOZ\call-workspace
+py -3.13 -m daphne -b 127.0.0.1 -p 8001 config.asgi:application
 ```
 
-> El servidor requiere que el proceso se inicie desde `BOT_VOZ/` como directorio de trabajo, ya que `GOOGLE_APPLICATION_CREDENTIALS=./botvozcrmintouch-189b7029fad8.json` es una ruta relativa.
+### Login
+- URL: http://localhost:8001
+- Usuario: `admin` / Contraseña: `admin123`
 
 ---
 
-## Notas técnicas importantes
-
-### Compatibilidad Python 3.13 / Windows
-
-El proyecto fue diseñado para Python 3.12, pero corre en Python 3.13 con estos ajustes ya aplicados:
-- `audioop` (eliminado en 3.13) → reemplazado con numpy puro en `src/media/audio_utils.py`
-- `webrtcvad` → import opcional (falla silenciosamente si no hay compilador C)
-- `numpy==1.26.4` → actualizado a `>=2.1.0`
-- `pydantic==2.7.0` → actualizado a `>=2.10.0` (pydantic-core necesita Rust para 3.12 exact, 3.13 tiene wheels)
-- `telnyx==2.2.0` → eliminado de requirements (nunca fue importado en el código)
-
-### SSL / Antivirus
-
-`config/settings.py` construye un bundle PEM combinando certifi + el store de Windows. Necesario porque Avast intercepta HTTPS y firma con su propio certificado raíz. Sin esto, gRPC no puede conectarse a ningún servicio de Google. En Cloud Run no tiene efecto (no hay Avast).
-
-### Arquitectura real vs CLAUDE.md
-
-CLAUDE.md menciona LiveKit, pero el código implementado usa Telnyx Media Streaming directamente (WebSocket a `wss://media.telnyx.com`). Las variables `LIVEKIT_*` en `.env.example` son un vestigio.
+## Estructura del proyecto
 
 ```
-Telnyx PSTN → POST /webhooks/telnyx
-  → CallOrchestrator (asyncio task)
-  → TelnexMediaStreamingClient (WebSocket directo a Telnyx)
-  → VAD (webrtcvad) → STT → LLM → TTS → audio de vuelta
+BOT_VOZ/
+├── src/                    FastAPI app + pipeline de voz
+│   ├── api/                FastAPI routes (health, telnyx_webhook, calls, test_ui)
+│   ├── tts/                GoogleTTS — acepta speed y pitch
+│   ├── llm/                GeminiClient — acepta temperature y max_tokens
+│   ├── stt/                STT factory (Google/Deepgram)
+│   ├── session/            SessionState (historial de conversación)
+│   └── orchestrator/       CallOrchestrator para llamadas Telnyx reales
+│
+├── config/
+│   ├── settings.py         Pydantic settings (carga .env, SSL bundle)
+│   ├── bot_config.py       load_bot_profile(), get_default_profile()
+│   └── bot_profiles/       YAMLs de perfiles del bot
+│
+├── call-workspace/         Django app (UI + API REST)
+│   ├── apps/
+│   │   ├── accounts/       Custom User
+│   │   ├── campaigns/      Campaña (FK a Script)
+│   │   ├── calls/          Call + CallAnalysis + consumers.py (WS bot)
+│   │   ├── scripts/        Script + AgentGlobalConfig + config_resolver
+│   │   ├── batch/          BatchJob + BatchCallItem
+│   │   └── docs/           Página de documentación para developers
+│   ├── api/v1/             django-ninja REST API
+│   ├── config/
+│   │   ├── settings/       Django settings (base.py, dev.py)
+│   │   │   └── __init__.py SHIM: expone get_settings() de BOT_VOZ
+│   │   ├── bot_config.py   SHIM: re-exporta desde BOT_VOZ
+│   │   ├── bot_profiles/   SHIM: re-exporta BotProfileSchema desde BOT_VOZ
+│   │   └── asgi.py         Django Channels routing
+│   └── templates/          Todas las plantillas (extienden base.html)
+│
+└── docs/superpowers/       Specs y planes de implementación
+    ├── specs/
+    └── plans/
 ```
+
+---
+
+## Problema de shims de configuración
+
+Django corre desde `call-workspace/` — esto hace que `config.*` resuelva al paquete Django en vez de al módulo FastAPI. Se resuelve con 3 shims:
+
+| Archivo | Qué hace |
+|---|---|
+| `call-workspace/config/settings/__init__.py` | Expone `get_settings()` cargando `BOT_VOZ/config/settings.py` por ruta absoluta. También carga `.env` desde BOT_VOZ y resuelve `GOOGLE_APPLICATION_CREDENTIALS` a ruta absoluta. |
+| `call-workspace/config/bot_config.py` | Re-implementa `load_bot_profile()` y `get_default_profile()` apuntando a los YAMLs de BOT_VOZ. |
+| `call-workspace/config/bot_profiles/schema.py` | Carga `BotProfileSchema` desde `BOT_VOZ/config/bot_profiles/schema.py` via `importlib`. |
+
+> **Si aparece `ModuleNotFoundError` con `config.*`:** verificar que el shim correspondiente existe y que la ruta calculada con `.parent.parent.parent.parent` llega a `BOT_VOZ/`.
+
+---
+
+## Base de datos
+
+**Local:** SQLite en `call-workspace/test.sqlite3`  
+**Producción (pendiente):** SQL Server — cambiar `ENGINE` en `base.py`
+
+### Modelos principales
+
+| Modelo | App | Campos clave |
+|---|---|---|
+| `Script` | scripts | `prompt_template`, `greeting`, `input_params`, `output_params`, + 7 campos config (tts_voice, tts_speed, tts_pitch, llm_temperature, llm_max_tokens, vad_silence_ms, max_call_duration_seconds) |
+| `AgentGlobalConfig` | scripts | Singleton — defaults globales para todos los scripts |
+| `Campaign` | campaigns | FK → Script |
+| `BatchJob` | batch | FK → Campaign, `source` (csv/api), progress counters |
+| `BatchCallItem` | batch | FK → BatchJob, `phone_number`, `input_params` (JSON) |
+| `Call` | calls | UUID PK, FK → Campaign, `status`, `audio_gcs_url` |
+| `CallAnalysis` | calls | OneToOne → Call, `output_data` (JSON), `compliance_score` |
+
+### Migrar en SQLite local
+```bash
+cd call-workspace
+py -3.13 manage.py migrate
+py -3.13 manage.py createsuperuser
+```
+
+---
+
+## Sintaxis de scripts
+
+```
+Saludo:   "Hola {{nombre}} desde {{consecionario}}"
+Prompt:   "Confirmar {{fecha_agenda}} ... [[confirmacion]]"
+          ## comentario interno ##
+
+input_params  → [nombre, consecionario, fecha_agenda]   (del greeting + prompt)
+output_params → [confirmacion]                           (solo del prompt)
+```
+
+- `{{var}}` = entrada, se reemplaza antes de llamar
+- `[[var]]` = salida, el bot la captura y queda en `CallAnalysis.output_data`
+- `## ##` = comentario, solo visible al editar el script
+
+---
+
+## Páginas UI disponibles
+
+| URL | Descripción |
+|---|---|
+| `/calls/dashboard/` | Dashboard con KPIs |
+| `/calls/bot-test/?script_id=N` | Probar bot con micrófono del PC |
+| `/scripts/` | Lista de scripts |
+| `/scripts/nuevo/` | Crear script (3 tabs: Contenido / Voz / Comportamiento) |
+| `/scripts/settings/agente/` | Configuración global del agente |
+| `/batch/` | Lista de lotes |
+| `/batch/nuevo/` | Subir CSV para lote |
+| `/campaigns/` | Campañas |
+| `/docs/developers/` | Documentación API para desarrolladores |
+| `/api/v1/docs` | Swagger interactivo |
+| `/admin/` | Django Admin |
+
+---
+
+## API REST (django-ninja)
+
+Autenticación: sesión Django (cookie `sessionid` + header `X-CSRFToken`)
+
+| Método | Endpoint | Descripción |
+|---|---|---|
+| GET | `/api/v1/campaigns/` | Listar campañas |
+| POST | `/api/v1/campaigns/` | Crear campaña |
+| PUT | `/api/v1/campaigns/{id}/` | Actualizar campaña |
+| POST | `/api/v1/batch/` | Crear lote de llamadas |
+| GET | `/api/v1/calls/` | Listar llamadas (filtros: campaign_id, status) |
+| GET | `/api/v1/calls/{uuid}/` | Detalle de llamada |
+| GET | `/api/v1/calls/{uuid}/analysis/` | Análisis LLM |
+| GET | `/scripts/api/{id}/json/` | Datos del script (input/output params) |
 
 ---
 
 ## Tests
 
 ```bash
-# Unit tests (sin GCP):
-.venv/Scripts/python.exe -m pytest tests/unit/ -v
+# Django (call-workspace)
+cd call-workspace
+py -3.13 -m pytest tests/ -v          # 9 tests — parsers + config_resolver
 
-# Integration tests (requieren GCP real):
-.venv/Scripts/python.exe -m pytest tests/integration/ -m integration
+# BOT_VOZ (FastAPI)
+cd BOT_VOZ
+py -3.13 -m pytest tests/unit/ -v -m "not integration"   # sin GCP
 ```
-
-Los unit tests cubren `audio_utils`, `session_state` y `turn_manager`. Están pendientes de actualizar para los cambios de numpy en audio_utils (reemplazo de audioop).
 
 ---
 
-## Archivos de limpieza pendiente
+## Estado por componente
 
-- `requirements_temp.txt` — archivo temporal, se puede borrar
-- `call-workspace/` — directorio clonado externamente, no es parte del proyecto
+### ✅ Funcionando
+
+| Componente | Notas |
+|---|---|
+| Django UI completa | Scripts, batch, campaigns, bot test, docs |
+| Bot de prueba (micrófono PC) | WebSocket vía Django Channels en `/ws/bot-test/` |
+| Google TTS (Neural2) | Voces mujer/hombre, speed y pitch configurables por script |
+| Google STT v2 | Streaming, `es-US` |
+| Gemini via Vertex AI | Streaming, temperature y max_tokens configurables |
+| API REST django-ninja | Batch, campaigns, calls |
+| Configuración por script | tts_voice, tts_speed, llm_temperature, etc. con fallback a global |
+| Variables `{{}}` en saludo | Parser combina inputs de greeting + prompt |
+| Documentación developers | `/docs/developers/` con snippets Python completos |
+
+### ⚠️ Pendiente / Incompleto
+
+| Componente | Estado | Qué falta |
+|---|---|---|
+| **Telefonía Telnyx** | ❌ No probado | Ver sección "Qué falta para telefonía" |
+| **Celery + Redis** | ❌ No corriendo en local | Batch usa `.delay()` — sin worker las llamadas no se procesan |
+| **Análisis post-llamada** | ⚠️ Código existe (`analyze_call` task) | Depende de Celery worker |
+| **Audio en GCS** | ⚠️ Código existe | Necesita bucket GCS configurado |
+| **SQL Server** | ❌ Solo SQLite local | Cambiar `ENGINE` en `base.py` + instalar `mssql` driver |
+| **webrtcvad en Windows** | ❌ No disponible | Necesita Visual Studio Build Tools (solo afecta ruta Telnyx) |
+| **Dashboard KPIs** | ⚠️ Vista existe | Sin datos reales hasta tener llamadas procesadas |
+
+---
+
+## Qué falta para hacer llamadas telefónicas reales (Telnyx)
+
+| # | Qué falta | Cómo resolverlo |
+|---|-----------|-----------------|
+| 1 | **URL pública** | `ngrok http 8080` → copiar URL HTTPS |
+| 2 | **Telnyx Media Streaming** | Portal Telnyx → SIP Connection → Media Streaming → activar con URL ngrok |
+| 3 | **Pub/Sub topic** | `gcloud pubsub topics create voice-bot-call-events` |
+| 4 | **webrtcvad** | Instalar Visual Studio Build Tools, o usar Docker |
+| 5 | **Celery worker** | `celery -A config.celery worker -l info` (requiere Redis) |
+
+Variables de `.env` requeridas: `TELNYX_API_KEY`, `TELNYX_PUBLIC_KEY`, `TELNYX_SIP_CONNECTION_ID` (ya presentes).
+
+---
+
+## Notas técnicas importantes
+
+### SSL / Antivirus (Windows)
+`config/settings.py` mezcla certifi + Windows trust store. Necesario con Avast u otros proxies corporativos que interceptan HTTPS. Sin esto, gRPC de GCP falla. En Cloud Run no tiene efecto.
+
+### Credenciales GCP
+El shim `call-workspace/config/settings/__init__.py` convierte `./botvozcrmintouch-189b7029fad8.json` (ruta relativa) a ruta absoluta basada en `BOT_VOZ/`. Esto es necesario porque Daphne corre desde `call-workspace/` no desde `BOT_VOZ/`.
+
+### Daphne vs runserver
+El servidor Django **debe correr con Daphne** (no `manage.py runserver`) para que el WebSocket del bot funcione. `runserver` no soporta ASGI con Django Channels correctamente.
+
+### BotProfileSchema — campo `description`
+Es requerido (sin default). Al crear perfiles en `consumers.py` siempre pasar `description=script.description or ""`.
+
+---
+
+## Deploy en GCP (Cloud Run)
+
+El `cloudbuild.yaml` existe para FastAPI. El Django aún no tiene pipeline de deploy. Para producción se necesitaría:
+1. Containerizar el Django con Daphne
+2. Configurar SQL Server o Cloud SQL
+3. Configurar Redis para Celery
+4. Hacer el deploy coordinado de ambos servicios
+
+---
+
+## Archivos importantes a no perder
+
+| Archivo | Descripción |
+|---|---|
+| `botvozcrmintouch-189b7029fad8.json` | Credenciales GCP — en `.gitignore`, nunca commitear |
+| `.env` | Variables de entorno — en `.gitignore` |
+| `call-workspace/test.sqlite3` | Base de datos local — en `.gitignore` |
+| `docs/superpowers/specs/` | Specs de diseño de features |
+| `docs/superpowers/plans/` | Planes de implementación |

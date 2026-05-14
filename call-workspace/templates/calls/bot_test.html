@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% block page_title %}Bot de Prueba{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Bot de Prueba</li>{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+
+  <!-- Conversación -->
+  <div class="col-xl-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="feather-message-circle me-2"></i>Conversación</h6>
+        <span id="chip2" class="badge bg-secondary">Sin conectar</span>
+      </div>
+      <div class="card-body p-3">
+        <div id="msgs" style="height:400px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+          <div class="text-center text-muted small fst-italic py-4">Presiona el botón verde para iniciar la llamada.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel derecho -->
+  <div class="col-xl-4 d-flex flex-column gap-3">
+
+    <!-- Script activo -->
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0"><i class="feather-file-text me-2"></i>Script activo</h6></div>
+      <div class="card-body p-3">
+        {% if script %}
+          <div class="d-flex align-items-start gap-2 mb-3">
+            <span class="badge bg-success mt-1">Cargado</span>
+            <div>
+              <strong>{{ script.name }}</strong>
+              {% if script.description %}
+                <div class="text-muted small">{{ script.description }}</div>
+              {% endif %}
+            </div>
+          </div>
+          <div class="mb-2 small">
+            <strong>Saludo:</strong>
+            <div class="bg-light border rounded p-2 mt-1" style="font-style:italic;">{{ script.greeting }}</div>
+          </div>
+          {% if script.input_params %}
+          <div class="mb-3 small">
+            <strong>Variables de prueba:</strong>
+            <div class="mt-2" id="test-vars-form">
+              {% for p in script.input_params %}
+              <div class="mb-2">
+                <label class="form-label mb-1" style="font-size:0.75rem;">
+                  <code>&#123;&#123;{{ p }}&#125;&#125;</code>
+                </label>
+                <input type="text" id="var_{{ p }}" data-param="{{ p }}"
+                       class="form-control form-control-sm test-var-input"
+                       placeholder="{{ p }}" />
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if script.output_params %}
+          <div class="mb-3 small">
+            <strong>Captura:</strong>
+            <div class="d-flex flex-wrap gap-1 mt-1">
+              {% for p in script.output_params %}<span class="badge bg-info">[[{{p}}]]</span>{% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          <a href="{% url 'calls:bot_test' %}" class="btn btn-sm btn-outline-secondary w-100">
+            <i class="feather-x me-1"></i>Quitar script
+          </a>
+        {% else %}
+          <p class="text-muted small text-center mb-2">Sin script cargado</p>
+          <div class="d-flex flex-column gap-1">
+            {% for s in scripts %}
+            <a href="{% url 'calls:bot_test' %}?script_id={{ s.pk }}" class="btn btn-sm btn-outline-primary text-start">
+              <i class="feather-play-circle me-1"></i>{{ s.name }}
+            </a>
+            {% empty %}
+            <a href="{% url 'scripts:create' %}" class="btn btn-sm btn-outline-secondary">
+              <i class="feather-plus me-1"></i>Crear un script
+            </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Control de llamada -->
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0"><i class="feather-phone me-2"></i>Control de llamada</h6></div>
+      <div class="card-body d-flex flex-column align-items-center gap-3 py-4">
+        <button class="call-btn start" id="call-btn">📞</button>
+        <div id="hint" class="text-muted small text-center fw-semibold">Iniciar llamada</div>
+        <div class="text-muted text-center" style="font-size:11px;">
+          Habla cuando el botón pulse en verde.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.call-btn {
+  width: 80px; height: 80px; border-radius: 50%; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; color: #fff;
+  transition: transform .15s, box-shadow .25s;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25);
+}
+.call-btn:hover:not(:disabled) { transform: scale(1.06); }
+.call-btn:disabled { opacity: .5; cursor: not-allowed; }
+.call-btn.start { background: linear-gradient(135deg, #10b981, #059669); }
+.call-btn.end   { background: linear-gradient(135deg, #dc2626, #991b1b); }
+.call-btn.listening { position: relative; }
+.call-btn.listening::before {
+  content: ''; position: absolute; inset: -6px; border-radius: 50%;
+  border: 2px solid #10b981; opacity: .6;
+  animation: ring 1.4s ease-out infinite;
+}
+@keyframes ring { 0% { transform: scale(.95); opacity: .7; } 100% { transform: scale(1.35); opacity: 0; } }
+.bubble { animation: fade .3s; }
+.bubble .lbl { font-size: 10px; opacity: .6; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+#msgs::-webkit-scrollbar { width: 4px; }
+#msgs::-webkit-scrollbar-thumb { background: #dee2e6; border-radius: 2px; }
+</style>
+
+<script>
+const WS_URL   = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/bot-test/`;
+const SCRIPT_ID   = '{{ script.pk|default:"" }}';
+const SCRIPT_NAME = '{{ script.name|default:""|escapejs }}';
+const SILENCE_DB        = -50;
+const SILENCE_MS_TO_END = 900;
+const MIN_SPEECH_MS     = 350;
+
+const msgsEl  = document.getElementById('msgs');
+const chip2El = document.getElementById('chip2');
+const callBtn = document.getElementById('call-btn');
+const hintEl  = document.getElementById('hint');
+
+let ws = null, audioCtx = null, workletNode = null, mediaStream = null;
+let inCall = false, listening = false, speaking = false;
+let speechMs = 0, silenceMs = 0;
+
+// ── Grabación de la llamada ───────────────────────────────────────────────
+let recordingDest = null;    // MediaStreamDestination (mezcla mic + TTS)
+let mediaRecorder = null;
+let recordingChunks = [];
+let callStartTime = null;
+let callTranscript = [];     // [{role, text}, ...]
+
+function setStatus(text, cls) {
+  chip2El.textContent = text;
+  chip2El.className = 'badge bg-' + (cls || 'secondary');
+}
+
+function addMsg(role, text) {
+  // Guardar en transcript
+  callTranscript.push({ role, text });
+
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble';
+  const isBot = role === 'bot';
+  wrap.innerHTML = `
+    <div class="lbl">${isBot ? 'ASISTENTE' : 'TÚ'}</div>
+    <div class="p-3 rounded-3" style="max-width:85%;${isBot
+      ? 'background:#e8f5e9;border-left:3px solid #10b981;'
+      : 'background:#e3f2fd;border-left:3px solid #1976d2;margin-left:auto;text-align:right;'}">
+      ${text}
+    </div>`;
+  msgsEl.appendChild(wrap);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function addDivider(text) {
+  const d = document.createElement('div');
+  d.className = 'text-center text-muted small fst-italic';
+  d.textContent = '— ' + text + ' —';
+  msgsEl.appendChild(d);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+// ── AudioWorklet ──────────────────────────────────────────────────────────
+function makeProcessorURL() {
+  const code = `
+class PCMRecorder extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this._chunks = []; this._on = false;
+    this._frameMs = (128 / sampleRate) * 1000;
+    this.port.onmessage = (e) => {
+      if (e.data === 'start') { this._on = true; this._chunks = []; return; }
+      if (e.data === 'stop') {
+        this._on = false;
+        const total = this._chunks.reduce((n,c) => n+c.length, 0);
+        const out = new Int16Array(total); let off = 0;
+        for (const c of this._chunks) { out.set(c, off); off += c.length; }
+        this.port.postMessage({ kind: 'audio', data: out.buffer }, [out.buffer]);
+        this._chunks = [];
+      }
+    };
+  }
+  process(inputs) {
+    if (!this._on || !inputs[0].length) return true;
+    const src = inputs[0][0];
+    let sumSq = 0;
+    for (let i = 0; i < src.length; i++) sumSq += src[i]*src[i];
+    const rms = Math.sqrt(sumSq / src.length) || 1e-9;
+    const dbfs = 20 * Math.log10(rms);
+    const ratio = sampleRate / 16000;
+    const len = Math.floor(src.length / ratio);
+    const out = new Int16Array(len);
+    for (let i = 0; i < len; i++) {
+      const s = Math.max(-1, Math.min(1, src[Math.floor(i*ratio)]));
+      out[i] = s < 0 ? s*0x8000 : s*0x7FFF;
+    }
+    this._chunks.push(out);
+    this.port.postMessage({ kind: 'level', dbfs, ms: this._frameMs });
+    return true;
+  }
+}
+registerProcessor('pcm-recorder', PCMRecorder);`;
+  return URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+}
+
+async function ensureAudio() {
+  if (audioCtx) return;
+  audioCtx = new AudioContext({ sampleRate: 48000 });
+  await audioCtx.audioWorklet.addModule(makeProcessorURL());
+  // Destino para mezclar mic + TTS y grabar todo
+  recordingDest = audioCtx.createMediaStreamDestination();
+}
+
+// ── VAD recording ─────────────────────────────────────────────────────────
+function onWorkletMessage(e) {
+  const { kind, dbfs, ms, data } = e.data;
+  if (kind === 'level') {
+    if (dbfs > SILENCE_DB) { speechMs += ms; silenceMs = 0; }
+    else {
+      silenceMs += ms;
+      if (silenceMs >= SILENCE_MS_TO_END && speechMs >= MIN_SPEECH_MS) {
+        stopListening(true);
+      }
+    }
+  } else if (kind === 'audio' && data) {
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(data);
+  }
+}
+
+async function startListening() {
+  if (listening || speaking) return;
+  if (!mediaStream) mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { noiseSuppression: true, echoCancellation: true } });
+  if (!workletNode) {
+    const src = audioCtx.createMediaStreamSource(mediaStream);
+    workletNode = new AudioWorkletNode(audioCtx, 'pcm-recorder');
+    workletNode.port.onmessage = onWorkletMessage;
+    src.connect(workletNode); workletNode.connect(audioCtx.destination);
+    // También conectar mic al destino de grabación
+    if (recordingDest) src.connect(recordingDest);
+  }
+  speechMs = 0; silenceMs = 0; listening = true;
+  workletNode.port.postMessage('start');
+  setStatus('Escuchándote…', 'warning');
+  callBtn.classList.add('listening');
+}
+
+function stopListening(send) {
+  if (!listening) return;
+  listening = false;
+  callBtn.classList.remove('listening');
+  if (workletNode) workletNode.port.postMessage(send ? 'stop' : 'discard');
+}
+
+async function playWav(b64) {
+  speaking = true;
+  const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+  const decoded = await audioCtx.decodeAudioData(buf);
+  const src = audioCtx.createBufferSource();
+  src.buffer = decoded;
+  src.connect(audioCtx.destination);
+  // También conectar audio del bot al destino de grabación
+  if (recordingDest) src.connect(recordingDest);
+  src.start();
+  await new Promise(r => { src.onended = r; });
+  speaking = false;
+  if (inCall) startListening();
+}
+
+// ── Grabación ────────────────────────────────────────────────────────────
+function startRecording() {
+  if (!recordingDest) return;
+  recordingChunks = [];
+  callTranscript = [];
+  callStartTime = Date.now();
+
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : 'audio/webm';
+
+  mediaRecorder = new MediaRecorder(recordingDest.stream, { mimeType });
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordingChunks.push(e.data); };
+  mediaRecorder.start(1000); // chunk cada 1s
+}
+
+async function stopAndUploadRecording(sessionId) {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') return;
+
+  await new Promise(resolve => {
+    mediaRecorder.onstop = resolve;
+    mediaRecorder.stop();
+  });
+
+  if (recordingChunks.length === 0) return;
+
+  const duration = (Date.now() - callStartTime) / 1000;
+  const blob = new Blob(recordingChunks, { type: 'audio/webm' });
+
+  const form = new FormData();
+  form.append('session_id', sessionId);
+  form.append('audio', blob, `${sessionId}.webm`);
+  form.append('transcript', JSON.stringify(callTranscript));
+  form.append('script_name', SCRIPT_NAME || '');
+  form.append('duration_seconds', String(duration.toFixed(1)));
+
+  try {
+    const resp = await fetch('/api/v1/conversations/upload', { method: 'POST', body: form });
+    if (resp.ok) {
+      const data = await resp.json();
+      addDivider(`Grabación guardada (${Math.round(duration)}s)`);
+      // Mostrar link para ir a las grabaciones
+      const link = document.createElement('div');
+      link.className = 'text-center mt-2';
+      link.innerHTML = `<a href="/conversations/" class="btn btn-sm btn-outline-primary">
+        <i class="feather-mic me-1"></i>Ver grabación</a>`;
+      msgsEl.appendChild(link);
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+  } catch (err) {
+    console.error('Error subiendo grabación:', err);
+  }
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────
+let currentSessionId = null;
+
+async function startCall() {
+  if (inCall) return;
+  inCall = true;
+  callBtn.classList.remove('start'); callBtn.classList.add('end');
+  callBtn.textContent = '📵';
+  hintEl.textContent = 'Finalizar llamada';
+  msgsEl.innerHTML = '';
+  callTranscript = [];
+  setStatus('Conectando…', 'warning');
+
+  await ensureAudio();
+
+  ws = new WebSocket(WS_URL);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => {
+    setStatus('Conectado', 'success');
+
+    if (SCRIPT_ID) {
+      const testValues = {};
+      document.querySelectorAll('.test-var-input').forEach(input => {
+        testValues[input.dataset.param] = input.value;
+      });
+
+      ws.send(JSON.stringify({
+        type: 'load_script',
+        script_id: SCRIPT_ID,
+        script_name: SCRIPT_NAME,
+        test_values: testValues,
+      }));
+    }
+  };
+
+  ws.onmessage = async (ev) => {
+    let d;
+    try { d = JSON.parse(ev.data); } catch { return; }
+    switch (d.type) {
+      case 'greeting':
+        // Arrancar grabación cuando llega el primer saludo
+        if (!currentSessionId) {
+          currentSessionId = d.session_id || crypto.randomUUID();
+          startRecording();
+        }
+        addMsg('bot', d.text);
+        await playWav(d.audio);
+        break;
+      case 'status':
+        setStatus(d.text, 'info');
+        break;
+      case 'transcript':
+        addMsg('user', d.text);
+        break;
+      case 'response':
+        addMsg('bot', d.text);
+        if (d.audio) await playWav(d.audio);
+        else if (inCall) startListening();
+        break;
+      case 'error':
+        addDivider('Error: ' + d.message);
+        setStatus('Error', 'danger');
+        break;
+      case 'ready':
+        if (inCall && !speaking) startListening();
+        break;
+    }
+  };
+
+  ws.onclose = () => {
+    if (inCall) endCall();
+    setStatus('Sin conectar', 'secondary');
+  };
+
+  ws.onerror = () => {
+    addDivider('Error de conexión con el bot (¿está corriendo FastAPI en 8080?)');
+    setStatus('Error', 'danger');
+    endCall();
+  };
+}
+
+function endCall() {
+  inCall = false; listening = false; speaking = false;
+  callBtn.classList.add('start'); callBtn.classList.remove('end', 'listening');
+  callBtn.textContent = '📞';
+  hintEl.textContent = 'Iniciar llamada';
+  setStatus('Guardando grabación…', 'info');
+  if (ws) { ws.close(); ws = null; }
+  stopListening(false);
+  addDivider('Fin de la llamada');
+
+  // Subir grabación al servidor
+  const sid = currentSessionId;
+  currentSessionId = null;
+  stopAndUploadRecording(sid).then(() => {
+    setStatus('Sin conectar', 'secondary');
+  });
+}
+
+callBtn.addEventListener('click', () => { if (inCall) endCall(); else startCall(); });
+</script>
+{% endblock %}

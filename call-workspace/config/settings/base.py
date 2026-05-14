@@ -13,6 +13,7 @@ DEBUG = env("DEBUG", "false").lower() == "true"
 ALLOWED_HOSTS = env("ALLOWED_HOSTS", "localhost").split(",")
 
 DJANGO_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -23,19 +24,24 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     "ninja",
+    "channels",
 ]
 
 LOCAL_APPS = [
     "apps.accounts",
     "apps.campaigns",
     "apps.calls",
-    "apps.reviews",
     "apps.processing",
+    "apps.scripts",
+    "apps.batch",
+    "apps.docs",
+    "apps.conversations",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    "config.middleware.LoggingMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -68,12 +74,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRES_DB", "callworkspace"),
-        "USER": env("POSTGRES_USER", "postgres"),
-        "PASSWORD": env("POSTGRES_PASSWORD", "postgres"),
-        "HOST": env("POSTGRES_HOST", "db"),
-        "PORT": env("POSTGRES_PORT", "5432"),
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "test.sqlite3",
     }
 }
 
@@ -99,6 +101,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+ASGI_APPLICATION = "config.asgi.application"
+CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+
 AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/calls/"
@@ -112,13 +117,6 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
 FTP_POLL_INTERVAL = int(env("FTP_POLL_INTERVAL", "900"))
-
-CELERY_BEAT_SCHEDULE = {
-    "poll-ftp": {
-        "task": "apps.processing.tasks.poll_ftp_task",
-        "schedule": FTP_POLL_INTERVAL,
-    }
-}
 
 # AssemblyAI
 ASSEMBLYAI_API_KEY = env("ASSEMBLYAI_API_KEY", "")
@@ -135,3 +133,21 @@ FTP_PASSWORD = env("FTP_PASSWORD", "")
 FTP_PORT = int(env("FTP_PORT", "21"))
 FTP_USE_SFTP = env("FTP_USE_SFTP", "false").lower() == "true"
 FTP_BASE_PATH = env("FTP_BASE_PATH", "/")
+
+# --- GCP / Vertex AI ---
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
+GCP_REGION = os.getenv("GCP_REGION", "us-central1")
+GCS_AUDIO_BUCKET = os.getenv("GCS_AUDIO_BUCKET", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+
+# --- BOT_VOZ ---
+BOT_VOZ_BASE_URL = os.getenv("BOT_VOZ_BASE_URL", "http://localhost:8080")
+BOT_VOZ_TIMEOUT_SECONDS = int(os.getenv("BOT_VOZ_TIMEOUT_SECONDS", "30"))
+WEBHOOK_PUBLIC_URL = os.getenv("WEBHOOK_PUBLIC_URL", "http://localhost:8000")
+
+CELERY_BEAT_SCHEDULE = {
+    "sweep-orphan-calls": {
+        "task": "apps.calls.tasks.sweep_orphan_calls",
+        "schedule": 900.0,  # every 15 minutes
+    },
+}

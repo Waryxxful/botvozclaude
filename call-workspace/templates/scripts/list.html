@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block page_title %}Scripts{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Scripts</li>{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="feather-list me-2"></i>Scripts de llamada</h6>
+        <a href="{% url 'scripts:create' %}" class="btn btn-primary btn-sm"><i class="feather-plus me-1"></i>Nuevo script</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Nombre</th>
+                <th>Inputs <code>&#123;&#123; &#125;&#125;</code></th>
+                <th>Outputs <code>[[ ]]</code></th>
+                <th>Actualizado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in scripts %}
+              <tr>
+                <td class="fw-semibold">
+                  <i class="feather-file-text me-2 text-muted" style="font-size: 0.9rem;"></i>{{ s.name }}
+                </td>
+                <td><small class="text-muted">{{ s.input_params|join:", "|default:"—" }}</small></td>
+                <td><small class="text-muted">{{ s.output_params|join:", "|default:"—" }}</small></td>
+                <td><small>{{ s.updated_at|date:"Y-m-d H:i" }}</small></td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <a href="{% url 'scripts:edit' s.pk %}" class="btn btn-sm btn-outline-secondary" title="Editar script">
+                      <i class="feather-edit-2"></i>
+                    </a>
+                    <a href="{% url 'scripts:preview' s.pk %}" class="btn btn-sm btn-outline-info" title="Previsualizar">
+                      <i class="feather-eye"></i>
+                    </a>
+                    <a href="{% url 'calls:bot_test' %}?script_id={{ s.pk }}" class="btn btn-sm btn-outline-success" title="Cargar en bot de prueba">
+                      <i class="feather-play-circle"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted py-4">No hay scripts aún.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .btn-sm { padding: 0.375rem 0.6rem; font-size: 0.875rem; }
+  .btn-sm i { font-size: 0.9rem; }
+  .table td { vertical-align: middle; }
+</style>
+
+<script>
+document.querySelectorAll('.load-in-bot').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const scriptId = this.dataset.scriptId;
+    const scriptName = this.dataset.scriptName;
+
+    // Guardar en localStorage
+    localStorage.setItem('loaded_script_id', scriptId);
+    localStorage.setItem('loaded_script_name', scriptName);
+
+    // Notificar al usuario
+    const feedback = document.createElement('div');
+    feedback.className = 'alert alert-success alert-dismissible fade show';
+    feedback.innerHTML = `
+      <i class="feather-check-circle me-2"></i>
+      <strong>Script cargado:</strong> <em>${scriptName}</em>
+      <br><small>Abre el <a href="http://localhost:8080/test/" target="_blank" class="alert-link">bot de prueba</a> para probar.</small>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    document.body.insertAdjacentElement('afterbegin', feedback);
+    this.classList.add('active');
+    this.disabled = true;
+  });
+});
+</script>
+{% endblock %}

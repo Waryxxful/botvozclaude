@@ -1,6 +1,4 @@
-# Framework web
-fastapi==0.115.0
-uvicorn[standard]==0.30.0
+# Pydantic (compartido con Django call-workspace)
 pydantic>=2.10.0
 pydantic-settings>=2.5.0
 
@@ -20,6 +18,7 @@ google-cloud-aiplatform>=1.70.0
 # Persistencia GCP
 google-cloud-firestore>=2.18.0
 google-cloud-pubsub>=2.23.0
+google-cloud-storage>=2.18
 
 # Audio processing
 soundfile==0.12.1

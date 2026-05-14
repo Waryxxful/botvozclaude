@@ -1,178 +1,92 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Call Workspace{% endblock %}
-
+{% block page_title %}Dashboard{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Dashboard</li>{% endblock %}
 {% block content %}
-<div class="flex items-center justify-between mb-6">
-    <h1 class="text-xl font-semibold text-gray-900">Dashboard</h1>
-    <a href="{% url 'calls:upload' %}"
-       class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-        + Nueva llamada
-    </a>
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-3 col-sm-6">
+    <div class="card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="bg-primary bg-opacity-10 rounded p-3"><i class="feather-phone text-primary fs-4"></i></div>
+        <div><div class="fs-4 fw-bold">{{ total_calls }}</div><div class="text-muted small">Llamadas totales</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-sm-6">
+    <div class="card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="bg-success bg-opacity-10 rounded p-3"><i class="feather-user-check text-success fs-4"></i></div>
+        <div><div class="fs-4 fw-bold">{{ contact_rate }}%</div><div class="text-muted small">Tasa de contacto</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-sm-6">
+    <div class="card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="bg-warning bg-opacity-10 rounded p-3"><i class="feather-star text-warning fs-4"></i></div>
+        <div><div class="fs-4 fw-bold">{{ avg_score }}/10</div><div class="text-muted small">Score promedio</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-sm-6">
+    <div class="card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="bg-info bg-opacity-10 rounded p-3"><i class="feather-layers text-info fs-4"></i></div>
+        <div><div class="fs-4 fw-bold">{{ active_batches }}</div><div class="text-muted small">Lotes activos</div></div>
+      </div>
+    </div>
+  </div>
 </div>
 
-{# ── Stat cards ── #}
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Llamadas procesadas</p>
-        <p class="mt-2 text-3xl font-bold text-gray-900">{{ done_count }}</p>
-        <p class="mt-1 text-xs text-gray-400">de {{ total }} en total</p>
+<div class="row g-3">
+  <!-- Chart -->
+  <div class="col-xl-7">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Score por campaña</h6></div>
+      <div class="card-body"><canvas id="campaignChart" height="280"></canvas></div>
     </div>
-
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Score promedio</p>
-        <p class="mt-2 text-3xl font-bold
-            {% if avg_score >= 8 %}text-green-600{% elif avg_score >= 5 %}text-yellow-500{% else %}text-red-600{% endif %}">
-            {{ avg_score }}<span class="text-base font-normal text-gray-400">/10</span>
-        </p>
-        <p class="mt-1 text-xs text-gray-400">sobre llamadas completadas</p>
-    </div>
-
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Cumplimiento script</p>
-        <p class="mt-2 text-3xl font-bold
-            {% if compliance_rate >= 80 %}text-green-600{% elif compliance_rate >= 60 %}text-yellow-500{% else %}text-red-600{% endif %}">
-            {{ compliance_rate }}<span class="text-base font-normal text-gray-400">%</span>
-        </p>
-        <p class="mt-1 text-xs text-gray-400">ítems cumplidos</p>
-    </div>
-
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Excelentes (8-10)</p>
-        <p class="mt-2 text-3xl font-bold text-green-600">{{ score_dist.high }}</p>
-        <p class="mt-1 text-xs text-gray-400">
-            {{ score_dist.mid }} medias · {{ score_dist.low }} bajas
-        </p>
-    </div>
-
-</div>
-
-{# ── Charts row ── #}
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-
-    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h2 class="text-sm font-semibold text-gray-700 mb-4">Score promedio por campaña</h2>
-        <div class="relative h-56">
-            <canvas id="campaignChart"></canvas>
+  </div>
+  <!-- Param distribution -->
+  <div class="col-xl-5">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">Distribución <code>[[params]]</code></h6>
+        {% if active_campaign %}<small class="text-muted">{{ active_campaign.name }}</small>{% endif %}
+      </div>
+      <div class="card-body">
+        {% for param, counts in param_distribution.items %}
+        <div class="mb-3">
+          <div class="fw-semibold small mb-1">{{ param }}</div>
+          {% for key, val in counts.items %}
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <div class="text-muted small" style="width:80px;overflow:hidden;">{{ key }}</div>
+            <div class="progress flex-grow-1" style="height:8px;">
+              <div class="progress-bar bg-primary" style="width:{{ val }}0px;max-width:100%;"></div>
+            </div>
+            <div class="text-muted small" style="width:24px;">{{ val }}</div>
+          </div>
+          {% endfor %}
         </div>
+        {% empty %}
+        <p class="text-muted text-center py-3">Sin datos aún.</p>
+        {% endfor %}
+      </div>
     </div>
-
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-        <h2 class="text-sm font-semibold text-gray-700 mb-4">Distribución de scores</h2>
-        <div class="relative h-56 flex items-center justify-center">
-            <canvas id="distChart"></canvas>
-        </div>
-    </div>
-
+  </div>
 </div>
 
-{# ── Recent calls ── #}
-<div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h2 class="text-sm font-semibold text-gray-700">Últimas llamadas completadas</h2>
-        <a href="{% url 'calls:list' %}" class="text-xs text-slate-500 hover:text-slate-800 underline underline-offset-2">Ver todas</a>
-    </div>
-    <table class="w-full text-sm">
-        <thead>
-            <tr class="bg-gray-50 border-b border-gray-100 text-left">
-                <th class="px-4 py-2.5 text-xs font-medium text-gray-500">#</th>
-                <th class="px-4 py-2.5 text-xs font-medium text-gray-500">Campaña</th>
-                <th class="px-4 py-2.5 text-xs font-medium text-gray-500">Agente</th>
-                <th class="px-4 py-2.5 text-xs font-medium text-gray-500">Procesada</th>
-                <th class="px-4 py-2.5 text-xs font-medium text-gray-500 text-center">Score</th>
-                <th class="px-4 py-2.5 text-xs font-medium text-gray-500"></th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-            {% for call in recent_calls %}
-            <tr class="hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-3 text-gray-400 font-mono text-xs">{{ call.id }}</td>
-                <td class="px-4 py-3 font-medium text-gray-900">{{ call.campaign.name }}</td>
-                <td class="px-4 py-3 text-gray-600">{{ call.agent.name|default:"—" }}</td>
-                <td class="px-4 py-3 text-gray-500 text-xs">{{ call.processed_at|date:"d/m/Y H:i" }}</td>
-                <td class="px-4 py-3 text-center">
-                    {% with s=call.analysis.score %}
-                    <span class="font-semibold {% if s >= 8 %}text-green-600{% elif s >= 5 %}text-yellow-500{% else %}text-red-600{% endif %}">
-                        {{ s }}/10
-                    </span>
-                    {% endwith %}
-                </td>
-                <td class="px-4 py-3 text-right">
-                    <a href="{% url 'calls:detail' call.id %}" class="text-xs text-slate-500 hover:text-slate-800 underline underline-offset-2">Ver</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="6" class="px-4 py-10 text-center text-gray-400 text-sm">
-                    No hay llamadas completadas aún.
-                    <a href="{% url 'calls:upload' %}" class="text-slate-600 underline ml-1">Subir una</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+{% endblock %}
 
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-const campaignLabels = {{ campaign_labels|safe }};
-const campaignScores = {{ campaign_scores|safe }};
-const campaignCalls  = {{ campaign_calls|safe }};
-
-// Score por campaña (bar)
+const labels = [{% for c in per_campaign %}"{{ c.name|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+const data   = [{% for c in per_campaign %}{{ c.avg_score|default:0|floatformat:1 }}{% if not forloop.last %},{% endif %}{% endfor %}];
 new Chart(document.getElementById('campaignChart'), {
-    type: 'bar',
-    data: {
-        labels: campaignLabels.length ? campaignLabels : ['Sin datos'],
-        datasets: [{
-            label: 'Score promedio',
-            data: campaignScores.length ? campaignScores : [0],
-            backgroundColor: campaignScores.map(s =>
-                s >= 8 ? 'rgba(34,197,94,0.7)' : s >= 5 ? 'rgba(234,179,8,0.7)' : 'rgba(239,68,68,0.7)'
-            ),
-            borderRadius: 6,
-            borderSkipped: false,
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: { min: 0, max: 10, ticks: { stepSize: 2 }, grid: { color: '#f3f4f6' } },
-            x: { grid: { display: false } }
-        },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    afterLabel: (ctx) => `Llamadas: ${campaignCalls[ctx.dataIndex]}`
-                }
-            }
-        }
-    }
-});
-
-// Distribución de scores (doughnut)
-const distData = [{{ score_dist.high }}, {{ score_dist.mid }}, {{ score_dist.low }}];
-new Chart(document.getElementById('distChart'), {
-    type: 'doughnut',
-    data: {
-        labels: ['Alta (8-10)', 'Media (5-7)', 'Baja (1-4)'],
-        datasets: [{
-            data: distData.some(v => v > 0) ? distData : [1, 0, 0],
-            backgroundColor: ['rgba(34,197,94,0.8)', 'rgba(234,179,8,0.8)', 'rgba(239,68,68,0.8)'],
-            borderWidth: 0,
-            hoverOffset: 6,
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '65%',
-        plugins: {
-            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { size: 12 } } }
-        }
-    }
+  type: 'bar',
+  data: { labels, datasets: [{ label: 'Score promedio', data, backgroundColor: 'rgba(78,115,223,0.7)', borderRadius: 4 }] },
+  options: { scales: { y: { beginAtZero: true, max: 10 } }, plugins: { legend: { display: false } } }
 });
 </script>
 {% endblock %}

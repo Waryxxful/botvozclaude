@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block page_title %}Configuración del Agente{% endblock %}
+{% block breadcrumb_items %}<li class="breadcrumb-item active">Configuración global</li>{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="feather-settings me-2"></i>Valores por defecto del agente</h6>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-4">
+          Estos valores se usan para todos los scripts que no tengan configuración propia.
+        </p>
+        <form method="post">
+          {% csrf_token %}
+
+          <h6 class="mb-3 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Voz</h6>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Voz por defecto</label>
+            {{ form.tts_voice }}
+          </div>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Velocidad (0.5 – 2.0)</label>
+              {{ form.tts_speed }}
+              <small class="text-muted">1.0 = normal</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Tono pitch (-10 – +10)</label>
+              {{ form.tts_pitch }}
+              <small class="text-muted">0 = neutral</small>
+            </div>
+          </div>
+
+          <h6 class="mb-3 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">LLM</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Temperatura (0 – 1)</label>
+              {{ form.llm_temperature }}
+              <small class="text-muted">0 = preciso, 1 = creativo</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Tokens máximos</label>
+              {{ form.llm_max_tokens }}
+              <small class="text-muted">Longitud máxima de respuesta</small>
+            </div>
+          </div>
+
+          <h6 class="mb-3 text-muted text-uppercase" style="font-size:0.75rem;letter-spacing:.05em;">Conversación</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Timeout silencio (ms)</label>
+              {{ form.vad_silence_ms }}
+              <small class="text-muted">Tiempo de silencio para cortar turno</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Duración máxima (seg)</label>
+              {{ form.max_call_duration_seconds }}
+              <small class="text-muted">Duración máxima de la llamada</small>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="feather-save me-2"></i>Guardar
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block page_title %}Lote #{{ job.id }}{% endblock %}
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'batch:list' %}">Lotes</a></li>
+<li class="breadcrumb-item active">#{{ job.id }}</li>
+{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <!-- Progress card -->
+  <div class="col-12">
+    <div class="card" id="progress-wrap"
+         hx-get="{% url 'batch:progress' job.pk %}"
+         hx-trigger="load, every 3s"
+         hx-swap="innerHTML">
+      {% include "batch/partials/progress.html" with job=job pct=0 %}
+    </div>
+  </div>
+  <!-- Items table -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header"><h6 class="mb-0">Items del lote</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr><th>Teléfono</th><th>Estado</th><th>Parámetros</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for item in job.items.all %}
+              <tr>
+                <td class="fw-semibold">{{ item.phone_number }}</td>
+                <td>
+                  {% if item.status == 'done' %}<span class="badge bg-success">Listo</span>
+                  {% elif item.status == 'calling' %}<span class="badge bg-primary">Llamando</span>
+                  {% elif item.status == 'failed' %}<span class="badge bg-danger">Fallido</span>
+                  {% elif item.status == 'retry' %}<span class="badge bg-warning text-dark">Reintento</span>
+                  {% else %}<span class="badge bg-secondary">Pendiente</span>{% endif %}
+                </td>
+                <td><code class="small">{{ item.input_params }}</code></td>
+                <td>
+                  {% with item.calls.first as call %}
+                    {% if call %}<a href="{% url 'calls:detail' call.pk %}" class="btn btn-sm btn-outline-primary">Ver llamada</a>{% endif %}
+                  {% endwith %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
