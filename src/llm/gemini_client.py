@@ -130,10 +130,12 @@ class GeminiClient:
             for msg in session.get_history_for_llm()
         ]
 
-        chat = model.start_chat(history=history)
+        chat = model.start_chat(history=history, response_validation=False)
 
         try:
             async for chunk in await chat.send_message_async(user_text, stream=True):
+                if not chunk.candidates:
+                    continue
                 for part in chunk.candidates[0].content.parts:
                     if part.text:
                         yield part.text

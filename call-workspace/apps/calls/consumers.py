@@ -121,10 +121,22 @@ class BotTestConsumer(AsyncWebsocketConsumer):
             except KeyError:
                 prompt_rendered = script.prompt_template
 
+            # Construir system prompt completo: contexto de agente + instrucciones de output params
+            from src.llm.prompt_builder import build_dynamic_system_prompt
+            agent_context = (
+                "Eres un agente de call center profesional que realiza llamadas salientes. "
+                "Sé conciso, amable y directo. Responde siempre en español. "
+                "Tu objetivo es completar la tarea indicada a continuación.\n\n"
+            )
+            full_prompt = build_dynamic_system_prompt(
+                agent_context + prompt_rendered,
+                script.output_params or [],
+            )
+
             self.profile = BotProfileSchema(
                 name=f"script_{script.pk}",
                 description=script.description or "",
-                system_prompt=prompt_rendered,
+                system_prompt=full_prompt,
                 greeting=greeting_rendered,
                 farewell="Gracias por la llamada.",
                 guardrails={},
@@ -187,9 +199,11 @@ class BotTestConsumer(AsyncWebsocketConsumer):
         from src.stt.stt_factory import get_stt_client
         stt = get_stt_client()
         result = ""
+        CHUNK_SIZE = 25600  # límite Google STT por mensaje
 
         async def _gen():
-            yield audio_bytes
+            for i in range(0, len(audio_bytes), CHUNK_SIZE):
+                yield audio_bytes[i:i + CHUNK_SIZE]
 
         async for text, is_final in stt.transcribe_stream(_gen()):
             if text:
@@ -206,14 +220,24 @@ class BotTestConsumer(AsyncWebsocketConsumer):
         temperature = cfg.llm_temperature if cfg else None
         max_tokens = cfg.llm_max_tokens if cfg else None
 
-        parts = []
-        async for chunk in self.llm.generate_streaming(
-            self.session, user_text,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        ):
-            parts.append(chunk)
-        response_text = "".join(parts).strip()
+        try:
+            parts = []
+            async for chunk in self.llm.generate_streaming(
+                self.session, user_text,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            ):
+                parts.append(chunk)
+            response_text = "".join(parts).strip()
+        except Exception as exc:
+            logger.error("llm_error", error=str(exc))
+            await self.send(text_data=json.dumps({"type": "error", "message": f"LLM: {exc}"}))
+            return
+
+        if not response_text:
+            await self.send(text_data=json.dumps({"type": "error", "message": "El modelo no generó respuesta."}))
+            return
+
         self.session.add_message(TranscriptionRole.USER, user_text)
         self.session.add_message(TranscriptionRole.ASSISTANT, response_text)
 

@@ -90,8 +90,41 @@
     <div class="card">
       <div class="card-header"><h6 class="mb-0"><i class="feather-phone me-2"></i>Control de llamada</h6></div>
       <div class="card-body d-flex flex-column align-items-center gap-3 py-4">
+        <!-- Selector de micrófono -->
+        <div class="w-100">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label small mb-0"><i class="feather-mic me-1"></i>Micrófono</label>
+            <button class="btn btn-outline-secondary btn-sm py-0 px-2" id="detect-mic-btn" style="font-size:11px;">Detectar</button>
+          </div>
+          <select id="mic-select" class="form-select form-select-sm">
+            <option value="">— Haz clic en Detectar —</option>
+          </select>
+        </div>
+        <!-- Nivel de audio -->
+        <div class="w-100" id="level-wrap" style="display:none;">
+          <div class="d-flex justify-content-between mb-1" style="font-size:11px;">
+            <span class="text-muted">Nivel mic</span>
+            <span id="level-db" class="text-muted">— dBFS</span>
+          </div>
+          <div class="w-100 rounded" style="height:6px;background:#e9ecef;">
+            <div id="level-bar" style="height:6px;border-radius:4px;background:#10b981;width:0%;transition:width .1s;"></div>
+          </div>
+          <!-- Slider umbral de silencio -->
+          <div class="d-flex justify-content-between align-items-center mt-2" style="font-size:11px;">
+            <span class="text-muted">Umbral silencio</span>
+            <span id="threshold-val" class="text-muted fw-semibold">-35 dBFS</span>
+          </div>
+          <input type="range" id="silence-threshold" class="form-range form-range-sm" min="-60" max="-10" step="1" value="-35">
+          <div class="text-muted text-center" style="font-size:10px;">Muévelo si el bot no corta o corta demasiado pronto.</div>
+        </div>
+
         <button class="call-btn start" id="call-btn">📞</button>
         <div id="hint" class="text-muted small text-center fw-semibold">Iniciar llamada</div>
+
+        <!-- Botón envío manual -->
+        <button id="send-btn" class="btn btn-sm btn-primary w-100" style="display:none;">
+          🎤 Enviar ahora
+        </button>
         <div class="text-muted text-center" style="font-size:11px;">
           Habla cuando el botón pulse en verde.
         </div>
@@ -131,14 +164,64 @@
 const WS_URL   = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/bot-test/`;
 const SCRIPT_ID   = '{{ script.pk|default:"" }}';
 const SCRIPT_NAME = '{{ script.name|default:""|escapejs }}';
-const SILENCE_DB        = -50;
+let   SILENCE_DB        = -35;
 const SILENCE_MS_TO_END = 900;
 const MIN_SPEECH_MS     = 350;
 
-const msgsEl  = document.getElementById('msgs');
-const chip2El = document.getElementById('chip2');
-const callBtn = document.getElementById('call-btn');
-const hintEl  = document.getElementById('hint');
+const msgsEl       = document.getElementById('msgs');
+const chip2El      = document.getElementById('chip2');
+const callBtn      = document.getElementById('call-btn');
+const hintEl       = document.getElementById('hint');
+const micSelect    = document.getElementById('mic-select');
+const detectMicBtn = document.getElementById('detect-mic-btn');
+
+// Cargar lista de micrófonos (requiere gesto del usuario para obtener labels)
+async function loadMicDevices() {
+  detectMicBtn.disabled = true;
+  detectMicBtn.textContent = '...';
+  try {
+    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+    tmp.getTracks().forEach(t => t.stop());
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter(d => d.kind === 'audioinput');
+    micSelect.innerHTML = '';
+    mics.forEach((d, i) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Micrófono ${i + 1}`;
+      micSelect.appendChild(opt);
+    });
+    if (mics.length === 0) micSelect.innerHTML = '<option value="">No se encontraron micrófonos</option>';
+  } catch (err) {
+    micSelect.innerHTML = `<option value="">Error: ${err.message}</option>`;
+  }
+  detectMicBtn.disabled = false;
+  detectMicBtn.textContent = 'Detectar';
+}
+
+detectMicBtn.addEventListener('click', loadMicDevices);
+
+// Al cambiar micrófono, liberar stream actual para que el próximo use el nuevo
+micSelect.addEventListener('change', () => {
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+  if (workletNode) { workletNode.disconnect(); workletNode = null; }
+});
+
+// Slider de umbral de silencio
+const silenceSlider  = document.getElementById('silence-threshold');
+const thresholdValEl = document.getElementById('threshold-val');
+const levelWrap      = document.getElementById('level-wrap');
+const levelBar       = document.getElementById('level-bar');
+const levelDbEl      = document.getElementById('level-db');
+const sendBtn        = document.getElementById('send-btn');
+
+silenceSlider.addEventListener('input', () => {
+  SILENCE_DB = parseInt(silenceSlider.value);
+  thresholdValEl.textContent = SILENCE_DB + ' dBFS';
+});
+
+// Botón envío manual: fuerza el fin del turno
+sendBtn.addEventListener('click', () => { if (listening) stopListening(true); });
 
 let ws = null, audioCtx = null, workletNode = null, mediaStream = null;
 let inCall = false, listening = false, speaking = false;
@@ -192,6 +275,7 @@ class PCMRecorder extends AudioWorkletProcessor {
     this._frameMs = (128 / sampleRate) * 1000;
     this.port.onmessage = (e) => {
       if (e.data === 'start') { this._on = true; this._chunks = []; return; }
+      if (e.data === 'discard') { this._on = false; this._chunks = []; return; }
       if (e.data === 'stop') {
         this._on = false;
         const total = this._chunks.reduce((n,c) => n+c.length, 0);
@@ -228,15 +312,30 @@ registerProcessor('pcm-recorder', PCMRecorder);`;
 async function ensureAudio() {
   if (audioCtx) return;
   audioCtx = new AudioContext({ sampleRate: 48000 });
+  await audioCtx.resume();
   await audioCtx.audioWorklet.addModule(makeProcessorURL());
-  // Destino para mezclar mic + TTS y grabar todo
   recordingDest = audioCtx.createMediaStreamDestination();
+}
+
+async function ensureMic() {
+  if (mediaStream) return;
+  const deviceId = micSelect.value;
+  const audioConstraints = deviceId
+    ? { deviceId: { exact: deviceId }, noiseSuppression: true, echoCancellation: true }
+    : { noiseSuppression: true, echoCancellation: true };
+  mediaStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
 }
 
 // ── VAD recording ─────────────────────────────────────────────────────────
 function onWorkletMessage(e) {
   const { kind, dbfs, ms, data } = e.data;
   if (kind === 'level') {
+    // Actualizar barra visual
+    const pct = Math.max(0, Math.min(100, ((dbfs + 60) / 50) * 100));
+    levelBar.style.width = pct + '%';
+    levelBar.style.background = dbfs > SILENCE_DB ? '#ef4444' : '#10b981';
+    levelDbEl.textContent = dbfs.toFixed(1) + ' dBFS';
+
     if (dbfs > SILENCE_DB) { speechMs += ms; silenceMs = 0; }
     else {
       silenceMs += ms;
@@ -251,19 +350,25 @@ function onWorkletMessage(e) {
 
 async function startListening() {
   if (listening || speaking) return;
-  if (!mediaStream) mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { noiseSuppression: true, echoCancellation: true } });
-  if (!workletNode) {
-    const src = audioCtx.createMediaStreamSource(mediaStream);
-    workletNode = new AudioWorkletNode(audioCtx, 'pcm-recorder');
-    workletNode.port.onmessage = onWorkletMessage;
-    src.connect(workletNode); workletNode.connect(audioCtx.destination);
-    // También conectar mic al destino de grabación
-    if (recordingDest) src.connect(recordingDest);
+  try {
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    await ensureMic();
+    if (!workletNode) {
+      const src = audioCtx.createMediaStreamSource(mediaStream);
+      workletNode = new AudioWorkletNode(audioCtx, 'pcm-recorder');
+      workletNode.port.onmessage = onWorkletMessage;
+      src.connect(workletNode);
+      if (recordingDest) src.connect(recordingDest);
+    }
+    speechMs = 0; silenceMs = 0; listening = true;
+    workletNode.port.postMessage('start');
+    setStatus('Escuchándote…', 'warning');
+    callBtn.classList.add('listening');
+  } catch (err) {
+    console.error('startListening error:', err);
+    addDivider('Error micrófono: ' + err.message);
+    setStatus('Error mic', 'danger');
   }
-  speechMs = 0; silenceMs = 0; listening = true;
-  workletNode.port.postMessage('start');
-  setStatus('Escuchándote…', 'warning');
-  callBtn.classList.add('listening');
 }
 
 function stopListening(send) {
@@ -275,15 +380,20 @@ function stopListening(send) {
 
 async function playWav(b64) {
   speaking = true;
-  const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
-  const decoded = await audioCtx.decodeAudioData(buf);
-  const src = audioCtx.createBufferSource();
-  src.buffer = decoded;
-  src.connect(audioCtx.destination);
-  // También conectar audio del bot al destino de grabación
-  if (recordingDest) src.connect(recordingDest);
-  src.start();
-  await new Promise(r => { src.onended = r; });
+  try {
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    const buf = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+    const decoded = await audioCtx.decodeAudioData(buf);
+    const src = audioCtx.createBufferSource();
+    src.buffer = decoded;
+    src.connect(audioCtx.destination);
+    if (recordingDest) src.connect(recordingDest);
+    src.start();
+    await new Promise(r => { src.onended = r; });
+  } catch (err) {
+    console.error('playWav error:', err);
+    addDivider('Error reproduciendo audio: ' + err.message);
+  }
   speaking = false;
   if (inCall) startListening();
 }
@@ -356,6 +466,8 @@ async function startCall() {
   setStatus('Conectando…', 'warning');
 
   await ensureAudio();
+  levelWrap.style.display = '';
+  sendBtn.style.display = '';
 
   ws = new WebSocket(WS_URL);
   ws.binaryType = 'arraybuffer';
@@ -432,6 +544,10 @@ function endCall() {
   setStatus('Guardando grabación…', 'info');
   if (ws) { ws.close(); ws = null; }
   stopListening(false);
+  // Resetear workletNode para que la próxima llamada lo recree limpio
+  if (workletNode) { workletNode.disconnect(); workletNode = null; }
+  levelWrap.style.display = 'none';
+  sendBtn.style.display = 'none';
   addDivider('Fin de la llamada');
 
   // Subir grabación al servidor

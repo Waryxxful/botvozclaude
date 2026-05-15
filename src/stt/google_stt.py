@@ -6,8 +6,10 @@ from google.cloud.speech_v2 import SpeechAsyncClient
 from google.cloud.speech_v2.types import (
     RecognitionConfig,
     StreamingRecognitionConfig,
+    StreamingRecognitionFeatures,
     StreamingRecognizeRequest,
-    SpeechAdaptation,
+    ExplicitDecodingConfig,
+    RecognitionFeatures,
 )
 
 from config.settings import get_settings
@@ -27,19 +29,19 @@ class GoogleSTT(BaseSTT):
     async def transcribe_stream(
         self,
         audio_chunks: AsyncIterator[bytes],
-        language: str = "es-419",
+        language: str = "es-US",
     ) -> AsyncIterator[tuple[str, bool]]:
         recognizer = f"projects/{self._project_id}/locations/global/recognizers/_"
 
         recognition_config = RecognitionConfig(
-            explicit_decoding_config=RecognitionConfig.ExplicitDecodingConfig(
-                encoding=RecognitionConfig.ExplicitDecodingConfig.AudioEncoding.LINEAR16,
+            explicit_decoding_config=ExplicitDecodingConfig(
+                encoding=ExplicitDecodingConfig.AudioEncoding.LINEAR16,
                 sample_rate_hertz=16000,
                 audio_channel_count=1,
             ),
             language_codes=[language],
             model="latest_long",
-            features=RecognitionConfig.RecognitionFeatures(
+            features=RecognitionFeatures(
                 enable_automatic_punctuation=True,
                 enable_word_time_offsets=False,
             ),
@@ -47,7 +49,7 @@ class GoogleSTT(BaseSTT):
 
         streaming_config = StreamingRecognitionConfig(
             config=recognition_config,
-            streaming_features=StreamingRecognitionConfig.StreamingRecognitionFeatures(
+            streaming_features=StreamingRecognitionFeatures(
                 enable_voice_activity_events=True,
                 interim_results=True,
             ),

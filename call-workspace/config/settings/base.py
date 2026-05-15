@@ -107,6 +107,7 @@ CHANNEL_LAYERS = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
 AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "/accounts/login/"
 LOGIN_REDIRECT_URL = "/calls/"
+LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 # Celery
 CELERY_BROKER_URL = env("REDIS_URL", "redis://redis:6379/0")
