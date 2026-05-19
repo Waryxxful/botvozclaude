@@ -18,10 +18,9 @@ def test_speech_end_changes_to_processing(sample_session):
     assert sample_session.turn_state == TurnState.PROCESSING
 
 
-def test_barge_in_when_speaking(sample_session):
+async def test_barge_in_when_speaking(sample_session):
     import asyncio
     tm = TurnManager(sample_session)
-    # Simular estado SPEAKING
     dummy_task = asyncio.ensure_future(asyncio.sleep(0))
     tm.on_speaking_start(dummy_task)
     assert sample_session.turn_state == TurnState.SPEAKING
@@ -31,7 +30,7 @@ def test_barge_in_when_speaking(sample_session):
     assert sample_session.turn_state == TurnState.LISTENING
 
 
-def test_speaking_end_returns_to_idle(sample_session):
+async def test_speaking_end_returns_to_idle(sample_session):
     import asyncio
     tm = TurnManager(sample_session)
     dummy_task = asyncio.ensure_future(asyncio.sleep(0))
